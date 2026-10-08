@@ -359,3 +359,143 @@ impl Api {
         })
     }
 }
+
+// ------------------------------------------------------------------------------------- HEVC
+
+pub const VA_PICTURE_HEVC_INVALID: u32 = 0x01;
+pub const VA_PICTURE_HEVC_LONG_TERM_REFERENCE: u32 = 0x08;
+pub const VA_PICTURE_HEVC_RPS_ST_CURR_BEFORE: u32 = 0x10;
+pub const VA_PICTURE_HEVC_RPS_ST_CURR_AFTER: u32 = 0x20;
+pub const VA_PICTURE_HEVC_RPS_LT_CURR: u32 = 0x40;
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct VAPictureHEVC {
+    pub picture_id: VASurfaceID,
+    pub pic_order_cnt: i32,
+    pub flags: u32,
+    pub va_reserved: [u32; VA_PADDING_LOW],
+}
+
+impl VAPictureHEVC {
+    pub const INVALID: VAPictureHEVC = VAPictureHEVC { picture_id: VA_INVALID_SURFACE, pic_order_cnt: 0, flags: VA_PICTURE_HEVC_INVALID, va_reserved: [0; VA_PADDING_LOW] };
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAPictureParameterBufferHEVC {
+    pub CurrPic: VAPictureHEVC,
+    pub ReferenceFrames: [VAPictureHEVC; 15],
+    pub pic_width_in_luma_samples: u16,
+    pub pic_height_in_luma_samples: u16,
+    /// `pic_fields` bits, low bit first: chroma_format_idc(2), separate_colour_plane, pcm_enabled,
+    /// scaling_list_enabled, transform_skip_enabled, amp_enabled, strong_intra_smoothing,
+    /// sign_data_hiding, constrained_intra_pred, cu_qp_delta_enabled, weighted_pred,
+    /// weighted_bipred, transquant_bypass, tiles_enabled, entropy_coding_sync,
+    /// pps_loop_filter_across_slices, loop_filter_across_tiles, pcm_loop_filter_disabled,
+    /// NoPicReorderingFlag, NoBiPredFlag.
+    pub pic_fields: u32,
+    pub sps_max_dec_pic_buffering_minus1: u8,
+    pub bit_depth_luma_minus8: u8,
+    pub bit_depth_chroma_minus8: u8,
+    pub pcm_sample_bit_depth_luma_minus1: u8,
+    pub pcm_sample_bit_depth_chroma_minus1: u8,
+    pub log2_min_luma_coding_block_size_minus3: u8,
+    pub log2_diff_max_min_luma_coding_block_size: u8,
+    pub log2_min_transform_block_size_minus2: u8,
+    pub log2_diff_max_min_transform_block_size: u8,
+    pub log2_min_pcm_luma_coding_block_size_minus3: u8,
+    pub log2_diff_max_min_pcm_luma_coding_block_size: u8,
+    pub max_transform_hierarchy_depth_intra: u8,
+    pub max_transform_hierarchy_depth_inter: u8,
+    pub init_qp_minus26: i8,
+    pub diff_cu_qp_delta_depth: u8,
+    pub pps_cb_qp_offset: i8,
+    pub pps_cr_qp_offset: i8,
+    pub log2_parallel_merge_level_minus2: u8,
+    pub num_tile_columns_minus1: u8,
+    pub num_tile_rows_minus1: u8,
+    pub column_width_minus1: [u16; 19],
+    pub row_height_minus1: [u16; 21],
+    /// `slice_parsing_fields` bits, low bit first: lists_modification_present,
+    /// long_term_ref_pics_present, sps_temporal_mvp_enabled, cabac_init_present,
+    /// output_flag_present, dependent_slice_segments_enabled,
+    /// pps_slice_chroma_qp_offsets_present, sample_adaptive_offset_enabled,
+    /// deblocking_filter_override_enabled, pps_disable_deblocking_filter,
+    /// slice_segment_header_extension_present, RapPicFlag, IdrPicFlag, IntraPicFlag.
+    pub slice_parsing_fields: u32,
+    pub log2_max_pic_order_cnt_lsb_minus4: u8,
+    pub num_short_term_ref_pic_sets: u8,
+    pub num_long_term_ref_pic_sps: u8,
+    pub num_ref_idx_l0_default_active_minus1: u8,
+    pub num_ref_idx_l1_default_active_minus1: u8,
+    pub pps_beta_offset_div2: i8,
+    pub pps_tc_offset_div2: i8,
+    pub num_extra_slice_header_bits: u8,
+    pub st_rps_bits: u32,
+    pub va_reserved: [u32; VA_PADDING_MEDIUM],
+}
+
+/// Pack boolean / small fields low bit first: `(value, width)` pairs.
+pub fn pack_bits(fields: &[(u32, u32)]) -> u32 {
+    let mut v = 0u32;
+    let mut at = 0u32;
+    for &(x, w) in fields {
+        if at + w > 32 {
+            break;
+        }
+        v |= (x & ((1u64 << w) - 1) as u32) << at;
+        at += w;
+    }
+    v
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VASliceParameterBufferHEVC {
+    pub slice_data_size: u32,
+    pub slice_data_offset: u32,
+    pub slice_data_flag: u32,
+    pub slice_data_byte_offset: u32,
+    pub slice_segment_address: u32,
+    pub RefPicList: [[u8; 15]; 2],
+    /// `LongSliceFlags` bits, low bit first: LastSliceOfPic, dependent_slice_segment,
+    /// slice_type(2), color_plane_id(2), sao_luma, sao_chroma, mvd_l1_zero, cabac_init,
+    /// temporal_mvp, deblocking_disabled, collocated_from_l0, loop_filter_across_slices.
+    pub LongSliceFlags: u32,
+    pub collocated_ref_idx: u8,
+    pub num_ref_idx_l0_active_minus1: u8,
+    pub num_ref_idx_l1_active_minus1: u8,
+    pub slice_qp_delta: i8,
+    pub slice_cb_qp_offset: i8,
+    pub slice_cr_qp_offset: i8,
+    pub slice_beta_offset_div2: i8,
+    pub slice_tc_offset_div2: i8,
+    pub luma_log2_weight_denom: u8,
+    pub delta_chroma_log2_weight_denom: i8,
+    pub delta_luma_weight_l0: [i8; 15],
+    pub luma_offset_l0: [i8; 15],
+    pub delta_chroma_weight_l0: [[i8; 2]; 15],
+    pub ChromaOffsetL0: [[i8; 2]; 15],
+    pub delta_luma_weight_l1: [i8; 15],
+    pub luma_offset_l1: [i8; 15],
+    pub delta_chroma_weight_l1: [[i8; 2]; 15],
+    pub ChromaOffsetL1: [[i8; 2]; 15],
+    pub five_minus_max_num_merge_cand: u8,
+    pub num_entry_point_offsets: u16,
+    pub entry_offset_to_subset_array: u16,
+    pub slice_data_num_emu_prevn_bytes: u16,
+    pub va_reserved: [u32; VA_PADDING_LOW - 2],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAIQMatrixBufferHEVC {
+    pub ScalingList4x4: [[u8; 16]; 6],
+    pub ScalingList8x8: [[u8; 64]; 6],
+    pub ScalingList16x16: [[u8; 64]; 6],
+    pub ScalingList32x32: [[u8; 64]; 2],
+    pub ScalingListDC16x16: [u8; 6],
+    pub ScalingListDC32x32: [u8; 2],
+    pub va_reserved: [u32; VA_PADDING_LOW],
+}

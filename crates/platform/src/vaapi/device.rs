@@ -142,11 +142,13 @@ impl Drop for Display {
     }
 }
 
-/// Plain-old-data parameter structures that may be handed to libva as raw bytes.
+/// Parameter structures libva may copy from memory.
 ///
 /// # Safety
-/// Implementors are `#[repr(C)]` structures of integers / arrays of integers with no padding
-/// libva could misread and no pointers (checked against the headers in `abi_tests.rs`).
+/// Implementors are `#[repr(C)]` structures of integers and arrays of integers, with no pointers,
+/// laid out exactly as libva's C declaration (checked in `abi_tests.rs`). They may contain
+/// padding: they are only handed to libva by pointer (C copies the bytes), never viewed as a Rust
+/// byte slice.
 pub unsafe trait VaParam: Copy {}
 // SAFETY: repr(C) integer-only structures from `ffi.rs`, layouts checked in abi_tests.rs.
 unsafe impl VaParam for VAPictureParameterBufferH264 {}
@@ -154,6 +156,12 @@ unsafe impl VaParam for VAPictureParameterBufferH264 {}
 unsafe impl VaParam for VAIQMatrixBufferH264 {}
 // SAFETY: as above.
 unsafe impl VaParam for VASliceParameterBufferH264 {}
+// SAFETY: as above.
+unsafe impl VaParam for VAPictureParameterBufferHEVC {}
+// SAFETY: as above.
+unsafe impl VaParam for VASliceParameterBufferHEVC {}
+// SAFETY: as above.
+unsafe impl VaParam for VAIQMatrixBufferHEVC {}
 
 /// A decode session: config, context and its pool of surfaces.
 pub struct Session {
@@ -213,30 +221,33 @@ impl Session {
         self.surfaces.get(i).copied()
     }
 
-    fn buffer_raw(&self, ty: VABufferType, bytes: &[u8], elem: usize, count: usize) -> Result<Buffer<'_>, String> {
-        if elem.checked_mul(count) != Some(bytes.len()) || bytes.is_empty() {
-            return Err("buffer size mismatch".into());
+    /// Create a buffer from `count` elements of `elem` bytes at `data`.
+    ///
+    /// # Safety
+    /// `data` must point to `elem * count` bytes that stay valid for the duration of the call.
+    unsafe fn buffer_raw(&self, ty: VABufferType, data: *const c_void, elem: usize, count: usize) -> Result<Buffer<'_>, String> {
+        if elem == 0 || count == 0 || elem > u32::MAX as usize || count > u32::MAX as usize {
+            return Err("buffer size out of range".into());
         }
         let mut id = VA_INVALID_ID;
-        // SAFETY: `bytes` holds `elem * count` readable bytes, which libva copies into its buffer
-        // before returning (the data pointer is only read during the call).
-        let st = unsafe { (self.disp.api.create_buffer)(self.disp.dpy, self.context, ty, elem as u32, count as u32, bytes.as_ptr() as *mut c_void, &mut id) };
+        // SAFETY: the caller guarantees `data` covers `elem * count` bytes; libva copies them into
+        // its own buffer before returning and never writes through the pointer.
+        let st = unsafe { (self.disp.api.create_buffer)(self.disp.dpy, self.context, ty, elem as u32, count as u32, data as *mut c_void, &mut id) };
         self.disp.check(st, "vaCreateBuffer")?;
         Ok(Buffer { s: self, id })
     }
 
-    /// A parameter buffer holding `items`.
+    /// A parameter buffer holding `items` (handed to libva by pointer: padding bytes are copied by
+    /// C, never read as Rust bytes).
     pub fn params<T: VaParam>(&self, ty: VABufferType, items: &[T]) -> Result<Buffer<'_>, String> {
-        let size = std::mem::size_of::<T>();
-        // SAFETY: `T: VaParam` is a padding-free repr(C) integer structure, so viewing `items` as
-        // bytes reads only initialised memory; the slice covers exactly `items`.
-        let bytes = unsafe { std::slice::from_raw_parts(items.as_ptr().cast::<u8>(), std::mem::size_of_val(items)) };
-        self.buffer_raw(ty, bytes, size, items.len())
+        // SAFETY: `items` is a live slice of `items.len()` values of `size_of::<T>()` bytes each.
+        unsafe { self.buffer_raw(ty, items.as_ptr().cast::<c_void>(), std::mem::size_of::<T>(), items.len()) }
     }
 
     /// A slice-data buffer.
     pub fn data(&self, bytes: &[u8]) -> Result<Buffer<'_>, String> {
-        self.buffer_raw(VASliceDataBufferType, bytes, bytes.len(), 1)
+        // SAFETY: `bytes` is a live slice of `bytes.len()` bytes.
+        unsafe { self.buffer_raw(VASliceDataBufferType, bytes.as_ptr().cast::<c_void>(), bytes.len(), 1) }
     }
 
     /// Decode one picture into surface slot `target` from `buffers` (picture parameters first).
