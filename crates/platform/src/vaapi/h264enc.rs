@@ -101,7 +101,7 @@ fn va_picture(surface: VASurfaceID, frame_num: u32, poc: i32, flags: u32) -> VAP
 }
 
 /// Split an Annex-B stream into NAL units (start codes removed).
-fn annexb_nals(data: &[u8]) -> Vec<&[u8]> {
+pub(crate) fn annexb_nals(data: &[u8]) -> Vec<&[u8]> {
     let mut out = Vec::new();
     let mut i = 0;
     let mut start: Option<usize> = None;

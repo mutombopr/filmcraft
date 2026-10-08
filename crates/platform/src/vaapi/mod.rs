@@ -10,6 +10,7 @@ pub mod ffi;
 pub mod h264;
 pub mod h264enc;
 pub mod hevc;
+pub mod hevcenc;
 pub mod vp9;
 
 #[cfg(test)]

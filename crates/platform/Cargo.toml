@@ -37,6 +37,7 @@ filmcraft-hevc = { workspace = true }
 filmcraft-h264enc = { workspace = true }
 filmcraft-vp9 = { workspace = true }
 filmcraft-av1 = { workspace = true }
+filmcraft-bitstream = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-core-foundation = "0.3.2"

@@ -112,6 +112,16 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
   selects it; it declines two-pass VBR, HDR, MXF, interlaced output, sizes above the driver's
   4096×4096 and systems without a VA-API H.264 encoder, and the software encoder runs instead. A
   failure during an export ends it with an error.
+- **Linux: VA-API H.265 encoding** (`vaapi/hevcenc.rs`), Main (8-bit SDR 4:2:0). H.265 has no
+  software encoder: `register()` adds a format probe (`hevcenc::available`, asked once) so Export
+  offers H.265 where the GPU encodes it, and choosing the format is the opt-in, as with
+  VideoToolbox. IDR + P, one slice, the driver's CBR / VBR. The driver reports none of the coding
+  tools it uses and writes slice headers our SPS cannot describe (a 4-bit picture order count and
+  an empty reference picture set), so: the VPS / SPS / PPS describe what decoding its output
+  showed (64×64 CTBs, coded width a multiple of 64 and height of 8, transform depth 3, AMP, SAO,
+  strong intra smoothing, CU QP deltas, no sign hiding or transform skip), and each slice header
+  is read (strictly: anything unexpected is an error) and rewritten with our POC and reference
+  picture set, keeping the driver's QP and SAO choices; the slice data is untouched.
 - **Other systems:** `register()` does nothing and returns `Availability::Unavailable`.
 - **`HybridDecoder`** (`hybrid.rs`, safe code): the hardware decoder plus the means to build our
   software decoder for the same `SampleEntry` (`filmcraft_codecs::software_video_decoder`). On a
@@ -202,7 +212,8 @@ level and flags are the encoder's own. If it is missing the export stops with th
 | `tests/setting.rs` | Hardware decoding Off gives the software decoder through `make_video_decoder` and the media stack (no hardware frames); Auto gives VideoToolbox where available |
 | `tests/hardware_encode.rs` (macOS) | what the hardware path takes and declines; round trip through our software decoder (every picture, in order, luma PSNR above 30 dB, keyframes no further apart than asked, no composition offsets); an export through `filmcraft_export` that decodes in our decoder and in ffmpeg / ffprobe (profile, size, frame count, BT.709); the built-in encoder still exporting everything hardware declines; exact output size at sizes that are not multiples of 16; hostile configurations (zero, huge, odd sizes, frame rates, bitrates, keyframe intervals, wrong planes) give errors and never panic; encoders dropped at any point do not crash or hang. The same for **HEVC**: Main profile, 8-bit 4:2:0, `hvc1` entry with VPS / SPS / PPS and 4-byte lengths, MP4 and QuickTime, AAC audio, two-pass refused, the format list agreeing with the probe, ffprobe reading `codec_name=hevc`, `profile=Main`, `codec_tag_string=hvc1`, `pix_fmt=yuv420p`, BT.709 |
 | `tests/nvenc.rs` (Windows, NVIDIA) | H.264 from NVENC (1280×720, 6 Mbps, 72 frames) decodes with our decoder at worst 46.9 dB luma PSNR; IDR at 0, 24 and 48; dts / pts right |
-| `tests/nvenc_export.rs` (Windows, NVIDIA) | Export with hardware encoding against the software encoder through the export pipeline: the two decoded files at worst 54.8 dB luma PSNR; ffmpeg decodes the file without errors; declined cases go to the software encoder; the counters |
+| `tests/nvenc_export.rs` (Windows, NVIDIA) | Export with hardware encoding against the software encoder through the export pipeline: the two decoded files at worst 54.8 dB luma PSNR; ffmpeg decodes the file without errors; declined cases go to the software encoder; the counters. H.265: offered when the GPU encodes it, 52.9 dB from the software H.264 export of the same frames, ffprobe `hevc,Main,hvc1`, BT.709, sizes 642×362 / 640×360 / 1000×562 cropped in the SPS and clean in ffmpeg |
+| `src/vaapi/abi_tests.rs` H.265 encode | 87 layout checks of the HEVC encode structures against libva 2.24 |
 | `tests/vaapi_export.rs` (Linux, VA-API) | Export with hardware encoding against the software encoder through the export pipeline (640×360, 72 frames): the two decoded files at worst 52.1 dB luma PSNR on a Radeon RX 7900; ffmpeg decodes the file without errors; declined cases go to the software encoder; the counters |
 | `src/vaapi/abi_tests.rs` (Linux) | FFI structs' sizes, alignments and field offsets against gcc's view of libva's headers (2.24): 113 H.264 decode, 91 HEVC decode and 128 H.264 encode checks |
 | `src/nvenc/abi_tests.rs` (Windows) | FFI structs' sizes, alignments, field offsets, constants and GUIDs against a C compiler's view of NVIDIA's `nvEncodeAPI.h` (12.1) |

@@ -89,7 +89,12 @@ pub fn register() -> Availability {
         // Export ▸ Hardware encoding (H.264): in front of the software encoder, taking an export
         // only when asked for and when the GPU can do it
         static ENCODERS: std::sync::Once = std::sync::Once::new();
-        ENCODERS.call_once(|| filmcraft_export::register_encoder(vaapi::h264enc::factory));
+        ENCODERS.call_once(|| {
+            filmcraft_export::register_encoder(vaapi::h264enc::factory);
+            // H.265 has no software encoder: the format exists where the GPU encodes it
+            filmcraft_export::register_encoder(vaapi::hevcenc::factory);
+            filmcraft_export::register_format_probe(filmcraft_export::Format::Hevc, vaapi::hevcenc::available);
+        });
         filmcraft_codecs::hw::set_hw_backend("VA-API");
         Availability::Available("VA-API")
     }

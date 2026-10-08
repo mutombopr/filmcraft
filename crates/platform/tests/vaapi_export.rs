@@ -83,8 +83,9 @@ fn hardware_export_matches_the_software_export() {
     filmcraft_platform::register();
     let (p, seq, m) = project(1280, 720, 72);
     let soft_path = tmp("soft.mp4");
+    let off = hw_encode_stats().sessions;
     export(&p, seq, &settings(soft_path.clone(), HardwareEncoding::Off), &m, &Progress::default()).unwrap();
-    assert_eq!(hw_encode_stats().sessions, 0, "Off: no hardware encoder");
+    assert_eq!(hw_encode_stats().sessions, off, "Off: no hardware encoder");
 
     let hw_path = tmp("hw.mp4");
     let before = hw_encode_stats();
@@ -140,4 +141,71 @@ fn what_the_gpu_does_not_take_goes_to_the_software_encoder() {
     assert_eq!(run("off.mp4", &|s| s.hardware_encoding = HardwareEncoding::Off), (0, 0));
     // the decoded file of a declined export is fine
     assert_eq!(decode(&tmp("odd.mp4")).len(), 24);
+}
+
+/// H.265 has no software encoder: on a GPU that encodes it the format is offered, and its export
+/// decodes in our decoder (close to the software H.264 export of the same frames) and in ffmpeg.
+#[test]
+fn hevc_export_on_the_gpu() {
+    let _one = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    filmcraft_platform::register();
+    if !filmcraft_export::available(Format::Hevc) {
+        eprintln!("SKIPPED: no VA-API H.265 encoder here");
+        return;
+    }
+    let (p, seq, m) = project(1280, 720, 72);
+    let reference = tmp("ref_h264.mp4");
+    export(&p, seq, &settings(reference.clone(), HardwareEncoding::Off), &m, &Progress::default()).unwrap();
+    let path = tmp("hevc.mp4");
+    let mut s = settings(path.clone(), HardwareEncoding::Off);
+    s.format = Format::Hevc;
+    let before = hw_encode_stats();
+    let report = export(&p, seq, &s, &m, &Progress::default()).unwrap();
+    assert_eq!(report.frames, 72);
+    assert_eq!(hw_encode_stats().frames - before.frames, 72, "every picture went through the GPU encoder");
+    let (want, got) = (decode(&reference), decode(&path));
+    assert_eq!(got.len(), 72, "frame count");
+    let worst = want.iter().zip(&got).map(|(a, b)| luma_psnr(a, b)).fold(99.0, f64::min);
+    eprintln!("H.265 {} bytes, worst luma PSNR against the H.264 export {worst:.1} dB", std::fs::metadata(&path).unwrap().len());
+    assert!(worst > 30.0, "H.265 export differs: {worst:.1} dB");
+    if let Some(ff) = filmcraft_testkit::ffmpeg() {
+        let out = std::process::Command::new(&ff).args(["-v", "error", "-i", &path, "-f", "null", "-"]).output().unwrap();
+        assert!(out.stderr.is_empty(), "ffmpeg: {}", String::from_utf8_lossy(&out.stderr));
+        let probe = ff.with_file_name("ffprobe");
+        let out = std::process::Command::new(probe)
+            .args([
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=codec_name,profile,codec_tag_string,pix_fmt,width,height,color_primaries",
+                "-of",
+                "csv=p=0",
+                &path,
+            ])
+            .output()
+            .unwrap();
+        let info = String::from_utf8_lossy(&out.stdout);
+        assert_eq!(info.trim(), "hevc,Main,hvc1,1280,720,yuv420p,bt709", "ffprobe");
+    }
+    // sizes that are not whole coding blocks / tree blocks: the SPS crops them
+    for (w, h) in [(642, 362), (640, 360), (1000, 562)] {
+        let (p, seq, m) = project(w, h, 12);
+        let path = tmp(&format!("hevc_{w}x{h}.mp4"));
+        let mut s = settings(path.clone(), HardwareEncoding::Off);
+        s.format = Format::Hevc;
+        export(&p, seq, &s, &m, &Progress::default()).unwrap();
+        let got = decode(&path);
+        assert_eq!(got.len(), 12, "{w}x{h}");
+        assert_eq!((got[0].width, got[0].height), (w, h), "cropped to the exported size");
+        let reference = tmp(&format!("ref_{w}x{h}.mp4"));
+        export(&p, seq, &settings(reference.clone(), HardwareEncoding::Off), &m, &Progress::default()).unwrap();
+        let worst = decode(&reference).iter().zip(&got).map(|(a, b)| luma_psnr(a, b)).fold(99.0, f64::min);
+        assert!(worst > 30.0, "{w}x{h}: {worst:.1} dB from the H.264 export");
+        if let Some(ff) = filmcraft_testkit::ffmpeg() {
+            let out = std::process::Command::new(ff).args(["-v", "error", "-i", &path, "-f", "null", "-"]).output().unwrap();
+            assert!(out.stderr.is_empty(), "ffmpeg {w}x{h}: {}", String::from_utf8_lossy(&out.stderr));
+        }
+    }
 }

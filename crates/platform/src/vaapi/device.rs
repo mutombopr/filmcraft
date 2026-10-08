@@ -108,9 +108,14 @@ impl Display {
 
     /// Config attributes of a profile's VLD entry point (`VA_ATTRIB_NOT_SUPPORTED` when absent).
     pub fn attributes(&self, profile: VAProfile, kinds: &[VAConfigAttribType]) -> Result<Vec<u32>, String> {
+        self.attributes_at(profile, VAEntrypointVLD, kinds)
+    }
+
+    /// [`attributes`](Self::attributes) of another entrypoint.
+    fn attributes_at(&self, profile: VAProfile, entrypoint: VAEntrypoint, kinds: &[VAConfigAttribType]) -> Result<Vec<u32>, String> {
         let mut a: Vec<VAConfigAttrib> = kinds.iter().map(|k| VAConfigAttrib { type_: *k, value: 0 }).collect();
         // SAFETY: `a` holds `a.len()` initialised attributes for libva to fill in.
-        let st = unsafe { (self.api.get_config_attributes)(self.dpy, profile, VAEntrypointVLD, a.as_mut_ptr(), a.len() as c_int) };
+        let st = unsafe { (self.api.get_config_attributes)(self.dpy, profile, entrypoint, a.as_mut_ptr(), a.len() as c_int) };
         self.check(st, "vaGetConfigAttributes")?;
         Ok(a.iter().map(|x| x.value).collect())
     }
@@ -126,7 +131,16 @@ impl Display {
 
     /// Largest picture the decoder takes, if the driver says.
     pub fn max_size(&self, profile: VAProfile) -> Result<Option<(u32, u32)>, String> {
-        let a = self.attributes(profile, &[VAConfigAttribMaxPictureWidth, VAConfigAttribMaxPictureHeight])?;
+        self.max_size_at(profile, VAEntrypointVLD)
+    }
+
+    /// Largest picture the encoder takes, if the driver says.
+    pub fn max_encode_size(&self, profile: VAProfile) -> Result<Option<(u32, u32)>, String> {
+        self.max_size_at(profile, VAEntrypointEncSlice)
+    }
+
+    fn max_size_at(&self, profile: VAProfile, entrypoint: VAEntrypoint) -> Result<Option<(u32, u32)>, String> {
+        let a = self.attributes_at(profile, entrypoint, &[VAConfigAttribMaxPictureWidth, VAConfigAttribMaxPictureHeight])?;
         Ok(match (a.first(), a.get(1)) {
             (Some(w), Some(h)) if *w != VA_ATTRIB_NOT_SUPPORTED && *h != VA_ATTRIB_NOT_SUPPORTED => Some((*w, *h)),
             _ => None,
@@ -170,6 +184,13 @@ unsafe impl VaParam for VASliceParameterBufferVP9 {}
 unsafe impl VaParam for VADecPictureParameterBufferAV1 {}
 // SAFETY: as above.
 unsafe impl VaParam for VASliceParameterBufferAV1 {}
+// SAFETY: as above.
+unsafe impl VaParam for VAEncSequenceParameterBufferHEVC {}
+// SAFETY: as above.
+unsafe impl VaParam for VAEncPictureParameterBufferHEVC {}
+// SAFETY: as above.
+unsafe impl VaParam for VAEncSliceParameterBufferHEVC {}
+
 // SAFETY: as above.
 unsafe impl VaParam for VAEncSequenceParameterBufferH264 {}
 // SAFETY: as above.

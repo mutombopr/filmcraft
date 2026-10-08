@@ -627,3 +627,146 @@ fn av1_layouts_and_constants_match_the_header() {
     assert_eq!(offset_of!(VASliceParameterBufferAV1, tile_idx_in_tile_list), 22, "VASliceParameterBufferAV1.tile_idx_in_tile_list");
     assert_eq!(offset_of!(VASliceParameterBufferAV1, va_reserved), 24, "VASliceParameterBufferAV1.va_reserved");
 }
+
+#[test]
+fn hevc_encode_layouts_match_the_header() {
+    assert_eq!((size_of::<VAEncSequenceParameterBufferHEVC>(), align_of::<VAEncSequenceParameterBufferHEVC>()), (116, 4), "VAEncSequenceParameterBufferHEVC");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, general_profile_idc), 0, "VAEncSequenceParameterBufferHEVC.general_profile_idc");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, general_level_idc), 1, "VAEncSequenceParameterBufferHEVC.general_level_idc");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, general_tier_flag), 2, "VAEncSequenceParameterBufferHEVC.general_tier_flag");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, intra_period), 4, "VAEncSequenceParameterBufferHEVC.intra_period");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, intra_idr_period), 8, "VAEncSequenceParameterBufferHEVC.intra_idr_period");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, ip_period), 12, "VAEncSequenceParameterBufferHEVC.ip_period");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, bits_per_second), 16, "VAEncSequenceParameterBufferHEVC.bits_per_second");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, pic_width_in_luma_samples), 20, "VAEncSequenceParameterBufferHEVC.pic_width_in_luma_samples");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, pic_height_in_luma_samples), 22, "VAEncSequenceParameterBufferHEVC.pic_height_in_luma_samples");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, seq_fields), 24, "VAEncSequenceParameterBufferHEVC.seq_fields");
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, log2_min_luma_coding_block_size_minus3),
+        28,
+        "VAEncSequenceParameterBufferHEVC.log2_min_luma_coding_block_size_minus3"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, log2_diff_max_min_luma_coding_block_size),
+        29,
+        "VAEncSequenceParameterBufferHEVC.log2_diff_max_min_luma_coding_block_size"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, log2_min_transform_block_size_minus2),
+        30,
+        "VAEncSequenceParameterBufferHEVC.log2_min_transform_block_size_minus2"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, log2_diff_max_min_transform_block_size),
+        31,
+        "VAEncSequenceParameterBufferHEVC.log2_diff_max_min_transform_block_size"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, max_transform_hierarchy_depth_inter),
+        32,
+        "VAEncSequenceParameterBufferHEVC.max_transform_hierarchy_depth_inter"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, max_transform_hierarchy_depth_intra),
+        33,
+        "VAEncSequenceParameterBufferHEVC.max_transform_hierarchy_depth_intra"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, pcm_sample_bit_depth_luma_minus1),
+        36,
+        "VAEncSequenceParameterBufferHEVC.pcm_sample_bit_depth_luma_minus1"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, pcm_sample_bit_depth_chroma_minus1),
+        40,
+        "VAEncSequenceParameterBufferHEVC.pcm_sample_bit_depth_chroma_minus1"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, log2_min_pcm_luma_coding_block_size_minus3),
+        44,
+        "VAEncSequenceParameterBufferHEVC.log2_min_pcm_luma_coding_block_size_minus3"
+    );
+    assert_eq!(
+        offset_of!(VAEncSequenceParameterBufferHEVC, log2_max_pcm_luma_coding_block_size_minus3),
+        48,
+        "VAEncSequenceParameterBufferHEVC.log2_max_pcm_luma_coding_block_size_minus3"
+    );
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, vui_parameters_present_flag), 52, "VAEncSequenceParameterBufferHEVC.vui_parameters_present_flag");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, vui_fields), 56, "VAEncSequenceParameterBufferHEVC.vui_fields");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, aspect_ratio_idc), 60, "VAEncSequenceParameterBufferHEVC.aspect_ratio_idc");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, sar_width), 64, "VAEncSequenceParameterBufferHEVC.sar_width");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, sar_height), 68, "VAEncSequenceParameterBufferHEVC.sar_height");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, vui_num_units_in_tick), 72, "VAEncSequenceParameterBufferHEVC.vui_num_units_in_tick");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, vui_time_scale), 76, "VAEncSequenceParameterBufferHEVC.vui_time_scale");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, min_spatial_segmentation_idc), 80, "VAEncSequenceParameterBufferHEVC.min_spatial_segmentation_idc");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, max_bytes_per_pic_denom), 82, "VAEncSequenceParameterBufferHEVC.max_bytes_per_pic_denom");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, max_bits_per_min_cu_denom), 83, "VAEncSequenceParameterBufferHEVC.max_bits_per_min_cu_denom");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, scc_fields), 84, "VAEncSequenceParameterBufferHEVC.scc_fields");
+    assert_eq!(offset_of!(VAEncSequenceParameterBufferHEVC, va_reserved), 88, "VAEncSequenceParameterBufferHEVC.va_reserved");
+    assert_eq!((size_of::<VAEncPictureParameterBufferHEVC>(), align_of::<VAEncPictureParameterBufferHEVC>()), (576, 4), "VAEncPictureParameterBufferHEVC");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, decoded_curr_pic), 0, "VAEncPictureParameterBufferHEVC.decoded_curr_pic");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, reference_frames), 28, "VAEncPictureParameterBufferHEVC.reference_frames");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, coded_buf), 448, "VAEncPictureParameterBufferHEVC.coded_buf");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, collocated_ref_pic_index), 452, "VAEncPictureParameterBufferHEVC.collocated_ref_pic_index");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, last_picture), 453, "VAEncPictureParameterBufferHEVC.last_picture");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, pic_init_qp), 454, "VAEncPictureParameterBufferHEVC.pic_init_qp");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, diff_cu_qp_delta_depth), 455, "VAEncPictureParameterBufferHEVC.diff_cu_qp_delta_depth");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, pps_cb_qp_offset), 456, "VAEncPictureParameterBufferHEVC.pps_cb_qp_offset");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, pps_cr_qp_offset), 457, "VAEncPictureParameterBufferHEVC.pps_cr_qp_offset");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, num_tile_columns_minus1), 458, "VAEncPictureParameterBufferHEVC.num_tile_columns_minus1");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, num_tile_rows_minus1), 459, "VAEncPictureParameterBufferHEVC.num_tile_rows_minus1");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, column_width_minus1), 460, "VAEncPictureParameterBufferHEVC.column_width_minus1");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, row_height_minus1), 479, "VAEncPictureParameterBufferHEVC.row_height_minus1");
+    assert_eq!(
+        offset_of!(VAEncPictureParameterBufferHEVC, log2_parallel_merge_level_minus2),
+        500,
+        "VAEncPictureParameterBufferHEVC.log2_parallel_merge_level_minus2"
+    );
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, ctu_max_bitsize_allowed), 501, "VAEncPictureParameterBufferHEVC.ctu_max_bitsize_allowed");
+    assert_eq!(
+        offset_of!(VAEncPictureParameterBufferHEVC, num_ref_idx_l0_default_active_minus1),
+        502,
+        "VAEncPictureParameterBufferHEVC.num_ref_idx_l0_default_active_minus1"
+    );
+    assert_eq!(
+        offset_of!(VAEncPictureParameterBufferHEVC, num_ref_idx_l1_default_active_minus1),
+        503,
+        "VAEncPictureParameterBufferHEVC.num_ref_idx_l1_default_active_minus1"
+    );
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, slice_pic_parameter_set_id), 504, "VAEncPictureParameterBufferHEVC.slice_pic_parameter_set_id");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, nal_unit_type), 505, "VAEncPictureParameterBufferHEVC.nal_unit_type");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, pic_fields), 508, "VAEncPictureParameterBufferHEVC.pic_fields");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, hierarchical_level_plus1), 512, "VAEncPictureParameterBufferHEVC.hierarchical_level_plus1");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, va_byte_reserved), 513, "VAEncPictureParameterBufferHEVC.va_byte_reserved");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, scc_fields), 514, "VAEncPictureParameterBufferHEVC.scc_fields");
+    assert_eq!(offset_of!(VAEncPictureParameterBufferHEVC, va_reserved), 516, "VAEncPictureParameterBufferHEVC.va_reserved");
+    assert_eq!((size_of::<VAEncSliceParameterBufferHEVC>(), align_of::<VAEncSliceParameterBufferHEVC>()), (1076, 4), "VAEncSliceParameterBufferHEVC");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_segment_address), 0, "VAEncSliceParameterBufferHEVC.slice_segment_address");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, num_ctu_in_slice), 4, "VAEncSliceParameterBufferHEVC.num_ctu_in_slice");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_type), 8, "VAEncSliceParameterBufferHEVC.slice_type");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_pic_parameter_set_id), 9, "VAEncSliceParameterBufferHEVC.slice_pic_parameter_set_id");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, num_ref_idx_l0_active_minus1), 10, "VAEncSliceParameterBufferHEVC.num_ref_idx_l0_active_minus1");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, num_ref_idx_l1_active_minus1), 11, "VAEncSliceParameterBufferHEVC.num_ref_idx_l1_active_minus1");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, ref_pic_list0), 12, "VAEncSliceParameterBufferHEVC.ref_pic_list0");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, ref_pic_list1), 432, "VAEncSliceParameterBufferHEVC.ref_pic_list1");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, luma_log2_weight_denom), 852, "VAEncSliceParameterBufferHEVC.luma_log2_weight_denom");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, delta_chroma_log2_weight_denom), 853, "VAEncSliceParameterBufferHEVC.delta_chroma_log2_weight_denom");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, delta_luma_weight_l0), 854, "VAEncSliceParameterBufferHEVC.delta_luma_weight_l0");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, luma_offset_l0), 869, "VAEncSliceParameterBufferHEVC.luma_offset_l0");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, delta_chroma_weight_l0), 884, "VAEncSliceParameterBufferHEVC.delta_chroma_weight_l0");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, chroma_offset_l0), 914, "VAEncSliceParameterBufferHEVC.chroma_offset_l0");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, delta_luma_weight_l1), 944, "VAEncSliceParameterBufferHEVC.delta_luma_weight_l1");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, luma_offset_l1), 959, "VAEncSliceParameterBufferHEVC.luma_offset_l1");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, delta_chroma_weight_l1), 974, "VAEncSliceParameterBufferHEVC.delta_chroma_weight_l1");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, chroma_offset_l1), 1004, "VAEncSliceParameterBufferHEVC.chroma_offset_l1");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, max_num_merge_cand), 1034, "VAEncSliceParameterBufferHEVC.max_num_merge_cand");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_qp_delta), 1035, "VAEncSliceParameterBufferHEVC.slice_qp_delta");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_cb_qp_offset), 1036, "VAEncSliceParameterBufferHEVC.slice_cb_qp_offset");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_cr_qp_offset), 1037, "VAEncSliceParameterBufferHEVC.slice_cr_qp_offset");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_beta_offset_div2), 1038, "VAEncSliceParameterBufferHEVC.slice_beta_offset_div2");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_tc_offset_div2), 1039, "VAEncSliceParameterBufferHEVC.slice_tc_offset_div2");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, slice_fields), 1040, "VAEncSliceParameterBufferHEVC.slice_fields");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, pred_weight_table_bit_offset), 1044, "VAEncSliceParameterBufferHEVC.pred_weight_table_bit_offset");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, pred_weight_table_bit_length), 1048, "VAEncSliceParameterBufferHEVC.pred_weight_table_bit_length");
+    assert_eq!(offset_of!(VAEncSliceParameterBufferHEVC, va_reserved), 1052, "VAEncSliceParameterBufferHEVC.va_reserved");
+}

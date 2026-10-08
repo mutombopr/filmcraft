@@ -360,6 +360,17 @@ of 1080p23.976 to H.264, default preset, VBR one pass. The VA-API row had `hw fr
   `crates/platform/tests/vaapi_export.rs` finds the hardware and software exports at worst 52.1 dB
   luma PSNR from each other (640×360, 72 frames).
 
+### H.265 on VA-API
+
+Same machine and method, `--only hevc` (the bench exports H.265 only where a hardware encoder
+provides it). H.265 has no software encoder, so both rows encode on the GPU (`hw frames` 573);
+`--hw auto` also decodes the H.264 source clip on the GPU.
+
+| run | fps | CPU ms/frame | MB |
+|---|---|---|---|
+| `--hw off` (software decoding) | 71 (2.7 s) | 101 | 16.9 |
+| **`--hw auto`** | **97** (2.0 s) | **64** | 16.9 |
+
 ## Results (HW2 follow-up: Windows VP9 and AV1 hardware decoding, Off → Auto)
 
 Same machine and method as the H.264 / HEVC results above (Xeon E5-2680 v4, RTX 5060 driver 617.14,
