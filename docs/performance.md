@@ -321,7 +321,7 @@ of 8 s of a 1080p23.976 H.264 clip (191 frames) to H.264 with the default preset
 
 Quality at equal bitrate: see the PR description.
 
-## Results (HW5: Linux VA-API hardware H.264 decoding, Off → Auto)
+## Results (HW5: Linux VA-API hardware H.264 / HEVC decoding, Off → Auto)
 
 Same build, `cargo xtask bench --sections decode --only dec_h264 --repeat 3 --hw off|auto`,
 2026-10-08, AMD Ryzen 7 9700X (16 threads) + Radeon RX 7900 (Navi 31), Mesa 26.2.2, libva 2.24,
@@ -331,9 +331,13 @@ load average 7–11. Pictures are bit-exact either way (`crates/platform/tests/v
 |---|---|---|---|---|
 | H.264 | 1080p | 33.6 → **0.9** | 393 → **348** | 360 / 0 |
 | H.264 | 2160p | 136.7 → **3.2** | 97 → **107** | 216 / 0 |
+| HEVC | 1080p | 22.7 → **0.7** | 258 → **493** | 360 / 0 |
+| HEVC | 2160p | 118.3 → **2.8** | 87 → **148** | 216 / 0 |
+| HEVC Main 10 | 2160p | 113.2 → **4.1** | 88 → **126** | 216 / 0 |
 
-Throughput is about the same (the software decoder already used all 16 threads); the CPU time
-left per frame is the slice-header parse and the copy of the picture out of the GPU.
+HEVC runs 1.4–1.9× faster on top of the CPU saving; H.264 throughput is about the same (the
+software decoder already used all 16 threads). The CPU time left per frame is the slice-header
+parse and the copy of the picture out of the GPU (`--only dec_hevc`, load average 3–8).
 
 ## Results (HW2 follow-up: Windows VP9 and AV1 hardware decoding, Off → Auto)
 

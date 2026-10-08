@@ -137,19 +137,24 @@ pub fn hardware_decoder_for(entry: &filmcraft_isobmff::SampleEntry) -> bool {
     }
 }
 
-/// The VA-API decoder for `entry` (H.264 8-bit 4:2:0 progressive), `None` when it does not take
-/// the stream; `Some(Err)` when it does but the hardware could not start.
+/// The VA-API decoder for `entry` (H.264 8-bit and HEVC 8/10-bit, 4:2:0 progressive), `None`
+/// when it does not take the stream; `Some(Err)` when it does but the hardware could not start.
 #[cfg(target_os = "linux")]
 fn vaapi_decoder(entry: &filmcraft_isobmff::SampleEntry) -> Option<std::result::Result<Box<dyn filmcraft_codecs::VideoDecoder>, String>> {
-    let filmcraft_isobmff::CodecConfig::Avc(avc) = &entry.codec else { return None };
     let info = filmcraft_codecs::hw::NalStreamInfo::from_entry(entry)?.ok()?;
-    if info.interlaced || info.chroma_format_idc != 1 || info.bit_depth_luma != 8 || info.bit_depth_chroma != 8 {
+    if info.interlaced || info.chroma_format_idc != 1 || info.bit_depth_luma != info.bit_depth_chroma {
         return None;
     }
-    Some(
-        vaapi::h264::VaH264Decoder::new(&avc.to_bytes())
-            .map(|d| Box::new(HybridDecoder::new(Box::new(d), entry.clone(), info)) as Box<dyn filmcraft_codecs::VideoDecoder>),
-    )
+    let hw: std::result::Result<Box<dyn filmcraft_codecs::VideoDecoder>, String> = match &entry.codec {
+        filmcraft_isobmff::CodecConfig::Avc(avc) if info.bit_depth_luma == 8 => {
+            vaapi::h264::VaH264Decoder::new(&avc.to_bytes()).map(|d| Box::new(d) as Box<dyn filmcraft_codecs::VideoDecoder>)
+        }
+        filmcraft_isobmff::CodecConfig::Hevc(hevc) if matches!(info.bit_depth_luma, 8 | 10) => {
+            vaapi::hevc::VaHevcDecoder::new(&hevc.to_bytes(), info.bit_depth_luma).map(|d| Box::new(d) as Box<dyn filmcraft_codecs::VideoDecoder>)
+        }
+        _ => return None,
+    };
+    Some(hw.map(|d| Box::new(HybridDecoder::new(d, entry.clone(), info)) as Box<dyn filmcraft_codecs::VideoDecoder>))
 }
 
 /// The VA-API factory: a [`HybridDecoder`] around [`vaapi::h264::VaH264Decoder`] for streams the

@@ -13,10 +13,11 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
 
 ## What it does
 
-- **Linux: VA-API H.264 (`avcC`)**, 8-bit 4:2:0 progressive (`vaapi/`). libva and libva-drm are
+- **Linux: VA-API H.264 (`avcC`, 8-bit) and HEVC (`hvcC`, Main and Main 10)**, 4:2:0 progressive
+  (`vaapi/`). libva and libva-drm are
   loaded at run time (`libloading`), so builds and systems without them are unaffected;
   `register()` reports `Unavailable` when no render node's driver decodes H.264. VA-API is
-  stateless: `filmcraft_h264`'s own decoder runs with an `accel::Accelerator` that receives each
+  stateless: `filmcraft_h264`'s / `filmcraft_hevc`'s own decoder runs with an `accel::Accelerator` that receives each
   picture (slice headers, raw slice NALs, reference lists after modification, POCs, the DPB's
   references) instead of reconstructing it, so parameter sets, reference marking and output
   order are the software decoder's. `vaapi::h264` turns that into VA picture / IQ-matrix / slice
@@ -24,9 +25,11 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
   `vaGetImage` (a GPU copy into system memory, avoiding slow reads of uncached VRAM) into the
   same biplanar → planar copy as the other backends. Field pictures, frame_num gaps and driver
   errors fall back to software in `HybridDecoder`. Layouts are checked against libva's headers
-  (`vaapi/abi_tests.rs`, 113 checks). Bit-exact against the software decoder
-  (`tests/vaapi.rs`: whole stream, every reseek, resets; damaged samples never crash).
-  HEVC, VP9 and AV1 next.
+  (`vaapi/abi_tests.rs`, 113 H.264 + 91 HEVC checks). Bit-exact against the software decoder
+  (`tests/vaapi.rs`: H.264 High, HEVC Main and Main 10 fixtures, whole stream, every reseek, resets; damaged samples never crash).
+  HEVC: reference frames carry their RPS subset flags, scaling lists in the spec's
+  `ScalingList[sizeId][matrixId]` order (32×32 lists at matrixId 0 and 3), weights as deltas.
+  Missing reference pictures fall back to software. VP9 and AV1 next.
 - **macOS: VideoToolbox H.264 (`avcC`) and HEVC (`hvcC`)**, 8- and 10-bit, 4:2:0 and 4:2:2
   (`videotoolbox.rs`). The session is created from the sample entry's parameter sets with a
   hardware decoder *required*; samples go in as `CMSampleBuffer`s with asynchronous decompression

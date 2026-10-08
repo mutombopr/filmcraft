@@ -1,4 +1,5 @@
-//! VA-API decoding against our software decoders (Linux): every picture of the H.264 fixture
+//! VA-API decoding against our software decoders (Linux): every picture of the H.264 High, HEVC
+//! Main and HEVC Main 10 fixtures
 //! must be identical (bit-exact planes, colour, pixel aspect, pts and presentation order), also
 //! after `reset` + reseek; damaged samples must give errors or fall back, never crash or hang.
 //! Skips without ffmpeg (fixture generator) or without a VA-API driver that decodes H.264.
@@ -30,61 +31,66 @@ fn software(s: &Stream) -> Box<dyn VideoDecoder> {
 }
 
 #[test]
-fn h264_is_bit_exact_with_the_software_decoder() {
+fn bit_exact_with_the_software_decoders() {
     let _serial = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let ff = filmcraft_testkit::require_ffmpeg!();
-    let Some(path) = named(&ff, "h264_high.mp4") else { return };
-    let s = read_stream(&path);
-    let Some(mut hw) = hardware(&s) else { return };
-    let mut sw = software(&s);
-    let before = filmcraft_codecs::hw::hw_stats();
-    let a = decode_all(hw.as_mut(), &s.samples);
-    let b = decode_all(sw.as_mut(), &s.samples);
-    assert!(a.len() >= 60, "{} pictures", a.len());
-    assert_same("h264_high", &a, &b);
-    let after = filmcraft_codecs::hw::hw_stats();
-    // the pictures really came from the GPU (stats are global: compare this run only)
-    assert_eq!(after.fallbacks - before.fallbacks, 0, "stayed in hardware: {before:?} -> {after:?}");
-    assert_eq!(after.frames - before.frames, a.len() as u64, "every picture decoded in hardware: {before:?} -> {after:?}");
-    // reset + reseek to each later sync sample, decode a stretch
-    let syncs: Vec<usize> = (1..s.samples.len()).filter(|&i| s.sync[i]).collect();
-    assert!(!syncs.is_empty(), "more than one GOP");
-    for &k in syncs.iter().rev() {
-        let end = (k + 17).min(s.samples.len());
+    for (name, _) in FIXTURES {
+        let Some(path) = named(&ff, name) else { continue };
+        let s = read_stream(&path);
+        let Some(mut hw) = hardware(&s) else { continue };
+        let mut sw = software(&s);
+        let before = filmcraft_codecs::hw::hw_stats();
+        let a = decode_all(hw.as_mut(), &s.samples);
+        let b = decode_all(sw.as_mut(), &s.samples);
+        assert!(a.len() >= 60, "{name}: {} pictures", a.len());
+        assert_same(name, &a, &b);
+        let after = filmcraft_codecs::hw::hw_stats();
+        // the pictures really came from the GPU (stats are global: compare this run only)
+        assert_eq!(after.fallbacks - before.fallbacks, 0, "{name} stayed in hardware: {before:?} -> {after:?}");
+        assert_eq!(after.frames - before.frames, a.len() as u64, "{name}: every picture decoded in hardware");
+        // reset + reseek to each later sync sample, decode a stretch
+        let syncs: Vec<usize> = (1..s.samples.len()).filter(|&i| s.sync[i]).collect();
+        assert!(!syncs.is_empty(), "{name}: more than one GOP");
+        for &k in syncs.iter().rev() {
+            let end = (k + 17).min(s.samples.len());
+            hw.reset();
+            sw.reset();
+            let a = decode_all(hw.as_mut(), &s.samples[k..end]);
+            let b = decode_all(sw.as_mut(), &s.samples[k..end]);
+            assert!(!a.is_empty(), "{name}: pictures after seeking to {k}");
+            assert_same(&format!("{name} from sample {k}"), &a, &b);
+        }
         hw.reset();
         sw.reset();
-        let a = decode_all(hw.as_mut(), &s.samples[k..end]);
-        let b = decode_all(sw.as_mut(), &s.samples[k..end]);
-        assert!(!a.is_empty(), "pictures after seeking to {k}");
-        assert_same(&format!("h264_high from sample {k}"), &a, &b);
+        assert_same(&format!("{name} after resets"), &decode_all(hw.as_mut(), &s.samples), &decode_all(sw.as_mut(), &s.samples));
+        eprintln!("{name}: {} pictures bit-exact in hardware", a.len());
     }
-    hw.reset();
-    sw.reset();
-    assert_same("h264_high after resets", &decode_all(hw.as_mut(), &s.samples), &decode_all(sw.as_mut(), &s.samples));
 }
 
 #[test]
 fn damaged_samples_never_crash() {
     let _serial = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let ff = filmcraft_testkit::require_ffmpeg!();
-    let Some(path) = named(&ff, "h264_high.mp4") else { return };
-    let s = read_stream(&path);
     let mut seed = 0x5eed_u64;
-    for round in 0..4 {
-        let Some(mut hw) = hardware(&s) else { return };
-        for (i, (smp, pts)) in s.samples.iter().enumerate() {
-            let mut d = smp.clone();
-            if i > 0 && !d.is_empty() && round > 0 {
-                for _ in 0..round * 3 {
-                    let at = (xorshift(&mut seed) as usize) % d.len();
-                    d[at] ^= (xorshift(&mut seed) & 0xff) as u8;
+    for (name, _) in FIXTURES {
+        let Some(path) = named(&ff, name) else { continue };
+        let s = read_stream(&path);
+        for round in 0..4 {
+            let Some(mut hw) = hardware(&s) else { continue };
+            for (i, (smp, pts)) in s.samples.iter().enumerate() {
+                let mut d = smp.clone();
+                if i > 0 && !d.is_empty() && round > 0 {
+                    for _ in 0..round * 3 {
+                        let at = (xorshift(&mut seed) as usize) % d.len();
+                        d[at] ^= (xorshift(&mut seed) & 0xff) as u8;
+                    }
+                    if round == 3 {
+                        d.truncate(d.len() / 2);
+                    }
                 }
-                if round == 3 {
-                    d.truncate(d.len() / 2);
-                }
+                let _ = hw.decode(&d, *pts);
             }
-            let _ = hw.decode(&d, *pts);
+            let _ = hw.flush();
         }
-        let _ = hw.flush();
     }
 }

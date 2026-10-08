@@ -33,6 +33,7 @@ log = { workspace = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 libloading = "0.8"
 filmcraft-h264 = { workspace = true }
+filmcraft-hevc = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-core-foundation = "0.3.2"
