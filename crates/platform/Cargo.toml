@@ -35,6 +35,7 @@ libloading = "0.8"
 filmcraft-h264 = { workspace = true }
 filmcraft-hevc = { workspace = true }
 filmcraft-h264enc = { workspace = true }
+filmcraft-vp9 = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-core-foundation = "0.3.2"

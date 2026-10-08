@@ -163,6 +163,10 @@ unsafe impl VaParam for VASliceParameterBufferHEVC {}
 // SAFETY: as above.
 unsafe impl VaParam for VAIQMatrixBufferHEVC {}
 // SAFETY: as above.
+unsafe impl VaParam for VADecPictureParameterBufferVP9 {}
+// SAFETY: as above.
+unsafe impl VaParam for VASliceParameterBufferVP9 {}
+// SAFETY: as above.
 unsafe impl VaParam for VAEncSequenceParameterBufferH264 {}
 // SAFETY: as above.
 unsafe impl VaParam for VAEncPictureParameterBufferH264 {}

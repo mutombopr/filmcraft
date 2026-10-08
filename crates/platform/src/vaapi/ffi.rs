@@ -29,6 +29,8 @@ pub const VAProfileH264High: VAProfile = 7;
 pub const VAProfileH264ConstrainedBaseline: VAProfile = 13;
 pub const VAProfileHEVCMain: VAProfile = 17;
 pub const VAProfileHEVCMain10: VAProfile = 18;
+pub const VAProfileVP9Profile0: VAProfile = 19;
+pub const VAProfileVP9Profile2: VAProfile = 21;
 
 pub const VAEntrypointVLD: VAEntrypoint = 1;
 
@@ -678,4 +680,56 @@ pub struct VACodedBufferSegment {
     pub buf: *mut c_void,
     pub next: *mut c_void,
     pub va_reserved: [u32; VA_PADDING_LOW],
+}
+
+// ---- VP9 decoding (va_dec_vp9.h)
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VADecPictureParameterBufferVP9 {
+    pub frame_width: u16,
+    pub frame_height: u16,
+    pub reference_frames: [VASurfaceID; 8],
+    /// `pic_fields` bits, low bit first: subsampling_x, subsampling_y, frame_type, show_frame,
+    /// error_resilient_mode, intra_only, allow_high_precision_mv, mcomp_filter_type(3),
+    /// frame_parallel_decoding_mode, reset_frame_context(2), refresh_frame_context,
+    /// frame_context_idx(2), segmentation_enabled, segmentation_temporal_update,
+    /// segmentation_update_map, last_ref_frame(3), last_ref_frame_sign_bias, golden_ref_frame(3),
+    /// golden_ref_frame_sign_bias, alt_ref_frame(3), alt_ref_frame_sign_bias, lossless_flag.
+    pub pic_fields: u32,
+    pub filter_level: u8,
+    pub sharpness_level: u8,
+    pub log2_tile_rows: u8,
+    pub log2_tile_columns: u8,
+    pub frame_header_length_in_bytes: u8,
+    pub first_partition_size: u16,
+    pub mb_segment_tree_probs: [u8; 7],
+    pub segment_pred_probs: [u8; 3],
+    pub profile: u8,
+    pub bit_depth: u8,
+    pub va_reserved: [u32; 8],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct VASegmentParameterVP9 {
+    /// `segment_flags` bits, low bit first: segment_reference_enabled, segment_reference(2),
+    /// segment_reference_skipped.
+    pub segment_flags: u16,
+    pub filter_level: [[u8; 2]; 4],
+    pub luma_ac_quant_scale: i16,
+    pub luma_dc_quant_scale: i16,
+    pub chroma_ac_quant_scale: i16,
+    pub chroma_dc_quant_scale: i16,
+    pub va_reserved: [u32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VASliceParameterBufferVP9 {
+    pub slice_data_size: u32,
+    pub slice_data_offset: u32,
+    pub slice_data_flag: u32,
+    pub seg_param: [VASegmentParameterVP9; 8],
+    pub va_reserved: [u32; 4],
 }

@@ -13,7 +13,7 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
 
 ## What it does
 
-- **Linux: VA-API H.264 (`avcC`, 8-bit) and HEVC (`hvcC`, Main and Main 10)**, 4:2:0 progressive
+- **Linux: VA-API H.264 (`avcC`, 8-bit), HEVC (`hvcC`, Main and Main 10) and VP9 (`vpcC`, profiles 0 and 2)**, 4:2:0 progressive
   (`vaapi/`). libva and libva-drm are
   loaded at run time (`libloading`), so builds and systems without them are unaffected;
   `register()` reports `Unavailable` when no render node's driver decodes H.264. VA-API is
@@ -25,11 +25,19 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
   `vaGetImage` (a GPU copy into system memory, avoiding slow reads of uncached VRAM) into the
   same biplanar → planar copy as the other backends. Field pictures, frame_num gaps and driver
   errors fall back to software in `HybridDecoder`. Layouts are checked against libva's headers
-  (`vaapi/abi_tests.rs`, 113 H.264 + 91 HEVC checks). Bit-exact against the software decoder
-  (`tests/vaapi.rs`: H.264 High, HEVC Main and Main 10 fixtures, whole stream, every reseek, resets; damaged samples never crash).
+  (`vaapi/abi_tests.rs`, 113 H.264 + 91 HEVC + 37 VP9 checks). Bit-exact against the software decoder
+  (`tests/vaapi.rs`: H.264 High, HEVC Main and Main 10, VP9 profile 0 and 2 fixtures, whole stream, every reseek, resets; damaged samples never crash).
   HEVC: reference frames carry their RPS subset flags, scaling lists in the spec's
   `ScalingList[sizeId][matrixId]` order (32×32 lists at matrixId 0 and 3), weights as deltas.
-  Missing reference pictures fall back to software. VP9 and AV1 next.
+  Missing reference pictures fall back to software.
+  VP9: `filmcraft_vp9::accel::AccelDecoder` (the software decoder's superframe split, uncompressed
+  header parser with its carried loop filter / segmentation state, reference slots and
+  per-segment dequantizer / loop filter derivations) hands each frame to `vaapi::vp9`, which
+  fills the VA picture and slice / segment buffers; the GPU parses the compressed header and
+  keeps the probability contexts and segmentation map. Colour comes from
+  `FrameStreamInfo::picture_params` at each key frame, as on Windows. A size change at an inter
+  frame (scaled references), another bit depth or a missing reference falls back to software.
+  AV1 next.
 - **macOS: VideoToolbox H.264 (`avcC`) and HEVC (`hvcC`)**, 8- and 10-bit, 4:2:0 and 4:2:2
   (`videotoolbox.rs`). The session is created from the sample entry's parameter sets with a
   hardware decoder *required*; samples go in as `CMSampleBuffer`s with asynchronous decompression

@@ -145,20 +145,35 @@ pub fn hardware_decoder_for(entry: &filmcraft_isobmff::SampleEntry) -> bool {
 /// when it does not take the stream; `Some(Err)` when it does but the hardware could not start.
 #[cfg(target_os = "linux")]
 fn vaapi_decoder(entry: &filmcraft_isobmff::SampleEntry) -> Option<std::result::Result<Box<dyn filmcraft_codecs::VideoDecoder>, String>> {
-    let info = filmcraft_codecs::hw::NalStreamInfo::from_entry(entry)?.ok()?;
-    if info.interlaced || info.chroma_format_idc != 1 || info.bit_depth_luma != info.bit_depth_chroma {
+    use filmcraft_codecs::hw::{FrameCodec, FrameStreamInfo, NalStreamInfo};
+    type Boxed = Box<dyn filmcraft_codecs::VideoDecoder>;
+    if let Some(info) = NalStreamInfo::from_entry(entry) {
+        let info = info.ok()?;
+        if info.interlaced || info.chroma_format_idc != 1 || info.bit_depth_luma != info.bit_depth_chroma {
+            return None;
+        }
+        let hw: std::result::Result<Boxed, String> = match &entry.codec {
+            filmcraft_isobmff::CodecConfig::Avc(avc) if info.bit_depth_luma == 8 => {
+                vaapi::h264::VaH264Decoder::new(&avc.to_bytes()).map(|d| Box::new(d) as Boxed)
+            }
+            filmcraft_isobmff::CodecConfig::Hevc(hevc) if matches!(info.bit_depth_luma, 8 | 10) => {
+                vaapi::hevc::VaHevcDecoder::new(&hevc.to_bytes(), info.bit_depth_luma).map(|d| Box::new(d) as Boxed)
+            }
+            _ => return None,
+        };
+        return Some(hw.map(|d| Box::new(HybridDecoder::new(d, entry.clone(), info)) as Boxed));
+    }
+    let info = FrameStreamInfo::from_entry(entry)?.ok()?;
+    if info.mono || info.subsampling != (1, 1) {
         return None;
     }
-    let hw: std::result::Result<Box<dyn filmcraft_codecs::VideoDecoder>, String> = match &entry.codec {
-        filmcraft_isobmff::CodecConfig::Avc(avc) if info.bit_depth_luma == 8 => {
-            vaapi::h264::VaH264Decoder::new(&avc.to_bytes()).map(|d| Box::new(d) as Box<dyn filmcraft_codecs::VideoDecoder>)
-        }
-        filmcraft_isobmff::CodecConfig::Hevc(hevc) if matches!(info.bit_depth_luma, 8 | 10) => {
-            vaapi::hevc::VaHevcDecoder::new(&hevc.to_bytes(), info.bit_depth_luma).map(|d| Box::new(d) as Box<dyn filmcraft_codecs::VideoDecoder>)
+    let hw: std::result::Result<Boxed, String> = match info.codec {
+        FrameCodec::Vp9 if matches!((info.profile, info.bit_depth), (0, 8) | (2, 10)) => {
+            vaapi::vp9::VaVp9Decoder::new(info.clone()).map(|d| Box::new(d) as Boxed)
         }
         _ => return None,
     };
-    Some(hw.map(|d| Box::new(HybridDecoder::new(d, entry.clone(), info)) as Box<dyn filmcraft_codecs::VideoDecoder>))
+    Some(hw.map(|d| Box::new(HybridDecoder::new(d, entry.clone(), info)) as Boxed))
 }
 
 /// The VA-API factory: a [`HybridDecoder`] around [`vaapi::h264::VaH264Decoder`] for streams the

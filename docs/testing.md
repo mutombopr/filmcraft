@@ -72,7 +72,7 @@ are never linked or shipped ([AGENTS.md](../AGENTS.md) §2).
   AV1 fixtures (libvpx-vp9, libaom-av1; 360p, 1080p, 2160p, hidden alt-ref frames, two GOPs) need an ffmpeg with those encoders.
 
 The VA-API tests (`crates/platform/tests/vaapi.rs` and `vaapi_export.rs`, Linux only) skip without a
-VA-API driver that decodes / encodes H.264. The layout tests in `crates/platform/src/vaapi/abi_tests.rs`
+VA-API driver that decodes / encodes H.264; the VP9 fixtures need an ffmpeg with libvpx-vp9 (skipped without it). The layout tests in `crates/platform/src/vaapi/abi_tests.rs`
 were generated from a C program built with gcc against libva's headers (`/usr/include/va`, 2.24).
 
 The NVENC tests (`crates/platform/tests/nvenc.rs` and `nvenc_export.rs`, Windows only) skip without an

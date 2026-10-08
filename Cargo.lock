@@ -2110,6 +2110,7 @@ dependencies = [
  "filmcraft-render",
  "filmcraft-testkit",
  "filmcraft-time",
+ "filmcraft-vp9",
  "libloading",
  "log",
  "objc2-core-foundation",

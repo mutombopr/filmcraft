@@ -456,3 +456,68 @@ fn h264_encode_layouts_and_constants_match_the_header() {
     assert_eq!(pack_bits(&[(0, 1), (1, 1), (0, 1), (15, 5), (0, 5), (1, 1), (0, 1), (0, 1)]), 8314, "enc vui_fields");
     assert_eq!(pack_bits(&[(1, 1), (1, 2), (1, 1), (0, 1), (0, 2), (0, 1), (1, 1), (1, 1), (0, 1), (0, 1), (0, 1)]), 779, "enc pic_fields");
 }
+
+#[test]
+fn vp9_layouts_and_constants_match_the_header() {
+    assert_eq!(VAProfileVP9Profile0 as i64, 19, "VAProfileVP9Profile0");
+    assert_eq!(VAProfileVP9Profile2 as i64, 21, "VAProfileVP9Profile2");
+    assert_eq!((size_of::<VADecPictureParameterBufferVP9>(), align_of::<VADecPictureParameterBufferVP9>()), (92, 4), "VADecPictureParameterBufferVP9");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, frame_width), 0, "VADecPictureParameterBufferVP9.frame_width");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, frame_height), 2, "VADecPictureParameterBufferVP9.frame_height");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, reference_frames), 4, "VADecPictureParameterBufferVP9.reference_frames");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, pic_fields), 36, "VADecPictureParameterBufferVP9.pic_fields");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, filter_level), 40, "VADecPictureParameterBufferVP9.filter_level");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, sharpness_level), 41, "VADecPictureParameterBufferVP9.sharpness_level");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, log2_tile_rows), 42, "VADecPictureParameterBufferVP9.log2_tile_rows");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, log2_tile_columns), 43, "VADecPictureParameterBufferVP9.log2_tile_columns");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, frame_header_length_in_bytes), 44, "VADecPictureParameterBufferVP9.frame_header_length_in_bytes");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, first_partition_size), 46, "VADecPictureParameterBufferVP9.first_partition_size");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, mb_segment_tree_probs), 48, "VADecPictureParameterBufferVP9.mb_segment_tree_probs");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, segment_pred_probs), 55, "VADecPictureParameterBufferVP9.segment_pred_probs");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, profile), 58, "VADecPictureParameterBufferVP9.profile");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, bit_depth), 59, "VADecPictureParameterBufferVP9.bit_depth");
+    assert_eq!(offset_of!(VADecPictureParameterBufferVP9, va_reserved), 60, "VADecPictureParameterBufferVP9.va_reserved");
+    assert_eq!((size_of::<VASegmentParameterVP9>(), align_of::<VASegmentParameterVP9>()), (36, 4), "VASegmentParameterVP9");
+    assert_eq!(offset_of!(VASegmentParameterVP9, segment_flags), 0, "VASegmentParameterVP9.segment_flags");
+    assert_eq!(offset_of!(VASegmentParameterVP9, filter_level), 2, "VASegmentParameterVP9.filter_level");
+    assert_eq!(offset_of!(VASegmentParameterVP9, luma_ac_quant_scale), 10, "VASegmentParameterVP9.luma_ac_quant_scale");
+    assert_eq!(offset_of!(VASegmentParameterVP9, luma_dc_quant_scale), 12, "VASegmentParameterVP9.luma_dc_quant_scale");
+    assert_eq!(offset_of!(VASegmentParameterVP9, chroma_ac_quant_scale), 14, "VASegmentParameterVP9.chroma_ac_quant_scale");
+    assert_eq!(offset_of!(VASegmentParameterVP9, chroma_dc_quant_scale), 16, "VASegmentParameterVP9.chroma_dc_quant_scale");
+    assert_eq!(offset_of!(VASegmentParameterVP9, va_reserved), 20, "VASegmentParameterVP9.va_reserved");
+    assert_eq!((size_of::<VASliceParameterBufferVP9>(), align_of::<VASliceParameterBufferVP9>()), (316, 4), "VASliceParameterBufferVP9");
+    assert_eq!(offset_of!(VASliceParameterBufferVP9, slice_data_size), 0, "VASliceParameterBufferVP9.slice_data_size");
+    assert_eq!(offset_of!(VASliceParameterBufferVP9, slice_data_offset), 4, "VASliceParameterBufferVP9.slice_data_offset");
+    assert_eq!(offset_of!(VASliceParameterBufferVP9, slice_data_flag), 8, "VASliceParameterBufferVP9.slice_data_flag");
+    assert_eq!(offset_of!(VASliceParameterBufferVP9, seg_param), 12, "VASliceParameterBufferVP9.seg_param");
+    assert_eq!(offset_of!(VASliceParameterBufferVP9, va_reserved), 300, "VASliceParameterBufferVP9.va_reserved");
+    assert_eq!(
+        pack_bits(&[
+            (1, 1),
+            (0, 1),
+            (1, 1),
+            (0, 1),
+            (0, 1),
+            (0, 1),
+            (0, 1),
+            (5, 3),
+            (0, 1),
+            (2, 2),
+            (0, 1),
+            (3, 2),
+            (0, 1),
+            (0, 1),
+            (1, 1),
+            (6, 3),
+            (0, 1),
+            (0, 3),
+            (1, 1),
+            (5, 3),
+            (0, 1),
+            (1, 1)
+        ]),
+        2889142917,
+        "VP9 pic_fields packing"
+    );
+    assert_eq!(pack_bits(&[(1, 1), (2, 2), (1, 1)]), 13, "VP9 segment_flags packing");
+}

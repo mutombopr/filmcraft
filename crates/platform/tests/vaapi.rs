@@ -1,6 +1,5 @@
 //! VA-API decoding against our software decoders (Linux): every picture of the H.264 High, HEVC
-//! Main and HEVC Main 10 fixtures
-//! must be identical (bit-exact planes, colour, pixel aspect, pts and presentation order), also
+//! Main, HEVC Main 10 and VP9 profile 0 / 2 fixtures must be identical (bit-exact planes, colour, pixel aspect, pts and presentation order), also
 //! after `reset` + reseek; damaged samples must give errors or fall back, never crash or hang.
 //! Skips without ffmpeg (fixture generator) or without a VA-API driver that decodes H.264.
 #![cfg(target_os = "linux")]
@@ -12,6 +11,47 @@ use filmcraft_codecs::VideoDecoder;
 
 /// The hardware counters are process-wide: tests that read them must not overlap.
 static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// VP9 fixtures (hidden alt-ref frames in superframes, two GOPs; libvpx is a generator only):
+/// profile 0 (8-bit) and profile 2 (10-bit).
+const VP9: &[(&str, &str, &str)] = &[("vp9_p0.mp4", "0", "yuv420p"), ("vp9_p2.mp4", "2", "yuv420p10le")];
+
+fn vp9_fixture(ff: &std::path::Path, name: &str, profile: &str, pix: &str) -> Option<std::path::PathBuf> {
+    let args = [
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=s=640x360:r=24:d=3,noise=alls=12:allf=t",
+        "-c:v",
+        "libvpx-vp9",
+        "-profile:v",
+        profile,
+        "-b:v",
+        "0",
+        "-crf",
+        "32",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "8",
+        "-g",
+        "24",
+        "-auto-alt-ref",
+        "1",
+        "-lag-in-frames",
+        "8",
+        "-pix_fmt",
+        pix,
+    ];
+    fixture(ff, name, &args)
+}
+
+/// Every fixture this test decodes: (name, path).
+fn fixtures(ff: &std::path::Path) -> Vec<(String, std::path::PathBuf)> {
+    let nal = FIXTURES.iter().filter_map(|(name, _)| Some((name.to_string(), named(ff, name)?)));
+    let vp9 = VP9.iter().filter_map(|(name, p, pix)| Some((name.to_string(), vp9_fixture(ff, name, p, pix)?)));
+    nal.chain(vp9).collect()
+}
 
 /// The hardware decoder for a stream, or `None` (skip) when this machine has none for it.
 fn hardware(s: &Stream) -> Option<Box<dyn VideoDecoder>> {
@@ -34,8 +74,8 @@ fn software(s: &Stream) -> Box<dyn VideoDecoder> {
 fn bit_exact_with_the_software_decoders() {
     let _serial = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let ff = filmcraft_testkit::require_ffmpeg!();
-    for (name, _) in FIXTURES {
-        let Some(path) = named(&ff, name) else { continue };
+    for (name, path) in fixtures(&ff) {
+        let name = name.as_str();
         let s = read_stream(&path);
         let Some(mut hw) = hardware(&s) else { continue };
         let mut sw = software(&s);
@@ -72,8 +112,7 @@ fn damaged_samples_never_crash() {
     let _serial = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let ff = filmcraft_testkit::require_ffmpeg!();
     let mut seed = 0x5eed_u64;
-    for (name, _) in FIXTURES {
-        let Some(path) = named(&ff, name) else { continue };
+    for (_, path) in fixtures(&ff) {
         let s = read_stream(&path);
         for round in 0..4 {
             let Some(mut hw) = hardware(&s) else { continue };
