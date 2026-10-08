@@ -2,6 +2,7 @@
 //! stateless) and the GPU's video engine reconstructs the pictures. Built on [`ffi`], which loads
 //! libva at run time, and [`device`], the safe wrappers.
 
+pub mod av1;
 #[allow(unsafe_code)]
 pub mod device;
 #[allow(unsafe_code)]

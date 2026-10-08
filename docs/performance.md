@@ -336,8 +336,10 @@ load average 7–11. Pictures are bit-exact either way (`crates/platform/tests/v
 | HEVC Main 10 | 2160p | 113.2 → **4.1** | 88 → **126** | 216 / 0 |
 | VP9 | 1080p | 12.6 → **0.8** | 199 → **391** | 360 / 0 |
 | VP9 | 2160p | 61.1 → **2.9** | 50 → **118** | 216 / 0 |
+| AV1 | 1080p | 17.9 → **0.9** | 167 → **431** | 360 / 0 |
+| AV1 | 2160p | 64.0 → **3.0** | 41 → **138** | 216 / 0 |
 
-VP9 rows: `--only dec_vp9` (WebM, libvpx), same machine, load average 2–6. HEVC runs 1.4–1.9× and VP9 2–2.3× faster on top of the CPU saving; H.264 throughput is about the same (the
+VP9 rows: `--only dec_vp9` (WebM, libvpx), AV1 rows `--only dec_av1` (SVT-AV1), same machine, load average 2–12. HEVC runs 1.4–1.9×, VP9 2–2.3× and AV1 2.6–3.3× faster on top of the CPU saving; H.264 throughput is about the same (the
 software decoder already used all 16 threads). The CPU time left per frame is the slice-header
 parse and the copy of the picture out of the GPU (`--only dec_hevc`, load average 3–8).
 

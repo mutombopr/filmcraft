@@ -171,6 +171,7 @@ fn vaapi_decoder(entry: &filmcraft_isobmff::SampleEntry) -> Option<std::result::
         FrameCodec::Vp9 if matches!((info.profile, info.bit_depth), (0, 8) | (2, 10)) => {
             vaapi::vp9::VaVp9Decoder::new(info.clone()).map(|d| Box::new(d) as Boxed)
         }
+        FrameCodec::Av1 if info.profile == 0 && matches!(info.bit_depth, 8 | 10) => vaapi::av1::VaAv1Decoder::new(info.clone()).map(|d| Box::new(d) as Boxed),
         _ => return None,
     };
     Some(hw.map(|d| Box::new(HybridDecoder::new(d, entry.clone(), info)) as Boxed))

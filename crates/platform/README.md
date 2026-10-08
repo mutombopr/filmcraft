@@ -13,7 +13,7 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
 
 ## What it does
 
-- **Linux: VA-API H.264 (`avcC`, 8-bit), HEVC (`hvcC`, Main and Main 10) and VP9 (`vpcC`, profiles 0 and 2)**, 4:2:0 progressive
+- **Linux: VA-API H.264 (`avcC`, 8-bit), HEVC (`hvcC`, Main and Main 10) VP9 (`vpcC`, profiles 0 and 2) and AV1 (`av1C`, Main, 8- and 10-bit)**, 4:2:0 progressive
   (`vaapi/`). libva and libva-drm are
   loaded at run time (`libloading`), so builds and systems without them are unaffected;
   `register()` reports `Unavailable` when no render node's driver decodes H.264. VA-API is
@@ -25,8 +25,8 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
   `vaGetImage` (a GPU copy into system memory, avoiding slow reads of uncached VRAM) into the
   same biplanar → planar copy as the other backends. Field pictures, frame_num gaps and driver
   errors fall back to software in `HybridDecoder`. Layouts are checked against libva's headers
-  (`vaapi/abi_tests.rs`, 113 H.264 + 91 HEVC + 37 VP9 checks). Bit-exact against the software decoder
-  (`tests/vaapi.rs`: H.264 High, HEVC Main and Main 10, VP9 profile 0 and 2 fixtures, whole stream, every reseek, resets; damaged samples never crash).
+  (`vaapi/abi_tests.rs`, 113 H.264 + 91 HEVC + 37 VP9 + 94 AV1 checks). Bit-exact against the software decoder
+  (`tests/vaapi.rs`: H.264 High, HEVC Main and Main 10, VP9 profile 0 and 2, AV1 8- and 10-bit (libaom and SVT-AV1) fixtures, whole stream, every reseek, resets; damaged samples never crash).
   HEVC: reference frames carry their RPS subset flags, scaling lists in the spec's
   `ScalingList[sizeId][matrixId]` order (32×32 lists at matrixId 0 and 3), weights as deltas.
   Missing reference pictures fall back to software.
@@ -37,7 +37,14 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
   keeps the probability contexts and segmentation map. Colour comes from
   `FrameStreamInfo::picture_params` at each key frame, as on Windows. A size change at an inter
   frame (scaled references), another bit depth or a missing reference falls back to software.
-  AV1 next.
+  AV1: `filmcraft_av1::accel::AccelDecoder` (the software decoder's OBU parsing, sequence / frame
+  headers with their carried state, tile groups, reference slots and `show_existing_frame`)
+  hands each complete frame with its tiles to `vaapi::av1`; the GPU does entropy decoding with its
+  own CDFs. Film grain (the software decoder applies it), scalable streams, an inter-frame size
+  change, a missing reference or a sequence header of another picture format fall back to
+  software. (`FrameStreamInfo::parameters_changed` compares AV1 sequence headers by picture format,
+  not bytes: SVT-AV1 writes a provisional `av1C` header whose tool flags differ from the in-band
+  one, which sent every such MP4 to software on every backend.)
 - **macOS: VideoToolbox H.264 (`avcC`) and HEVC (`hvcC`)**, 8- and 10-bit, 4:2:0 and 4:2:2
   (`videotoolbox.rs`). The session is created from the sample entry's parameter sets with a
   hardware decoder *required*; samples go in as `CMSampleBuffer`s with asynchronous decompression

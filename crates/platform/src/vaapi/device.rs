@@ -166,6 +166,10 @@ unsafe impl VaParam for VAIQMatrixBufferHEVC {}
 unsafe impl VaParam for VADecPictureParameterBufferVP9 {}
 // SAFETY: as above.
 unsafe impl VaParam for VASliceParameterBufferVP9 {}
+// SAFETY: as above (`anchor_frames_list` is an address-sized integer, always 0: a null pointer).
+unsafe impl VaParam for VADecPictureParameterBufferAV1 {}
+// SAFETY: as above.
+unsafe impl VaParam for VASliceParameterBufferAV1 {}
 // SAFETY: as above.
 unsafe impl VaParam for VAEncSequenceParameterBufferH264 {}
 // SAFETY: as above.

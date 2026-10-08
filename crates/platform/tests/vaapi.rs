@@ -1,5 +1,5 @@
 //! VA-API decoding against our software decoders (Linux): every picture of the H.264 High, HEVC
-//! Main, HEVC Main 10 and VP9 profile 0 / 2 fixtures must be identical (bit-exact planes, colour, pixel aspect, pts and presentation order), also
+//! Main, HEVC Main 10, VP9 profile 0 / 2 and AV1 8- / 10-bit fixtures must be identical (bit-exact planes, colour, pixel aspect, pts and presentation order), also
 //! after `reset` + reseek; damaged samples must give errors or fall back, never crash or hang.
 //! Skips without ffmpeg (fixture generator) or without a VA-API driver that decodes H.264.
 #![cfg(target_os = "linux")]
@@ -17,11 +17,16 @@ static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
 const VP9: &[(&str, &str, &str)] = &[("vp9_p0.mp4", "0", "yuv420p"), ("vp9_p2.mp4", "2", "yuv420p10le")];
 
 fn vp9_fixture(ff: &std::path::Path, name: &str, profile: &str, pix: &str) -> Option<std::path::PathBuf> {
+    vp9_fixture_sized(ff, name, profile, pix, "640x360")
+}
+
+fn vp9_fixture_sized(ff: &std::path::Path, name: &str, profile: &str, pix: &str, size: &str) -> Option<std::path::PathBuf> {
+    let src = format!("testsrc2=s={size}:r=24:d=3,noise=alls=12:allf=t");
     let args = [
         "-f",
         "lavfi",
         "-i",
-        "testsrc2=s=640x360:r=24:d=3,noise=alls=12:allf=t",
+        &src,
         "-c:v",
         "libvpx-vp9",
         "-profile:v",
@@ -46,11 +51,60 @@ fn vp9_fixture(ff: &std::path::Path, name: &str, profile: &str, pix: &str) -> Op
     fixture(ff, name, &args)
 }
 
+/// AV1 fixtures (libaom: hidden alt-ref frames and show_existing_frame, two GOPs): 8- and 10-bit.
+const AV1: &[(&str, &str)] = &[("av1_8bit.mp4", "yuv420p"), ("av1_10bit.mp4", "yuv420p10le")];
+
+fn av1_fixture(ff: &std::path::Path, name: &str, pix: &str) -> Option<std::path::PathBuf> {
+    let args = [
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=s=640x360:r=24:d=3,noise=alls=12:allf=t",
+        "-c:v",
+        "libaom-av1",
+        "-crf",
+        "34",
+        "-b:v",
+        "0",
+        "-cpu-used",
+        "8",
+        "-row-mt",
+        "1",
+        "-g",
+        "24",
+        "-lag-in-frames",
+        "8",
+        "-pix_fmt",
+        pix,
+    ];
+    fixture(ff, name, &args)
+}
+
 /// Every fixture this test decodes: (name, path).
 fn fixtures(ff: &std::path::Path) -> Vec<(String, std::path::PathBuf)> {
     let nal = FIXTURES.iter().filter_map(|(name, _)| Some((name.to_string(), named(ff, name)?)));
     let vp9 = VP9.iter().filter_map(|(name, p, pix)| Some((name.to_string(), vp9_fixture(ff, name, p, pix)?)));
-    nal.chain(vp9).collect()
+    let av1 = AV1.iter().filter_map(|(name, pix)| Some((name.to_string(), av1_fixture(ff, name, pix)?)));
+    // SVT-AV1 (most AV1 in the wild): other tools than libaom's (CDEF / restoration choices,
+    // 64x64 superblocks, its own GOP structure); skipped when this ffmpeg lacks it
+    let svt_args = [
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=s=1280x720:r=24:d=3,noise=alls=12:allf=t",
+        "-c:v",
+        "libsvtav1",
+        "-preset",
+        "8",
+        "-crf",
+        "35",
+        "-g",
+        "24",
+        "-pix_fmt",
+        "yuv420p10le",
+    ];
+    let svt = fixture(ff, "av1_svt_10bit.mp4", &svt_args).map(|p| ("av1_svt_10bit.mp4".to_string(), p));
+    nal.chain(vp9).chain(av1).chain(svt).collect()
 }
 
 /// The hardware decoder for a stream, or `None` (skip) when this machine has none for it.
@@ -131,5 +185,32 @@ fn damaged_samples_never_crash() {
             }
             let _ = hw.flush();
         }
+    }
+}
+
+/// A key frame of another size (VP9) / a sequence header of another picture format (AV1) in the
+/// middle of a stream: the hybrid decoder continues with the software decoder, whose output is the
+/// reference.
+#[test]
+fn in_band_format_changes_fall_back_to_software() {
+    let _serial = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let ff = filmcraft_testkit::require_ffmpeg!();
+    let all = fixtures(&ff);
+    let path = |n: &str| all.iter().find(|(name, _)| name == n).map(|(_, p)| p.clone());
+    let vp9_720 = vp9_fixture_sized(&ff, "vp9_p0_720.mp4", "0", "yuv420p", "1280x720");
+    let pairs = [("vp9", vp9_720, path("vp9_p0.mp4")), ("av1", path("av1_svt_10bit.mp4"), path("av1_10bit.mp4"))];
+    for (codec, big, small) in pairs {
+        let (Some(big), Some(small)) = (big, small) else { continue };
+        let (a, b) = (read_stream(&big), read_stream(&small));
+        let Some(mut hw) = hardware(&a) else { continue };
+        let mut sw = software(&a);
+        // (the second stream's pictures come later in time, as in a real stream)
+        let samples: Vec<_> = a.samples[..8].iter().cloned().chain(b.samples[..8].iter().map(|(d, p)| (d.clone(), p + 100_000))).collect();
+        let before = filmcraft_codecs::hw::hw_stats().fallbacks;
+        let got = decode_all(hw.as_mut(), &samples);
+        let want = decode_all(sw.as_mut(), &samples);
+        assert!(filmcraft_codecs::hw::hw_stats().fallbacks > before, "{codec}: the change was counted as a fallback");
+        assert_same(&format!("{codec} 720p then 360p"), &got, &want);
+        assert!(got.iter().any(|f| f.frame.width == 640) && got.iter().any(|f| f.frame.width == 1280), "{codec}: both sizes came out");
     }
 }
