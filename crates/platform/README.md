@@ -122,6 +122,17 @@ let availability = filmcraft_platform::register(); // Available("VideoToolbox") 
   strong intra smoothing, CU QP deltas, no sign hiding or transform skip), and each slice header
   is read (strictly: anything unexpected is an error) and rewritten with our POC and reference
   picture set, keeping the driver's QP and SAO choices; the slice data is untouched.
+- **Linux: VA-API AV1 encoding** (`vaapi/av1enc.rs`), Main (8-bit SDR 4:2:0), for the AV1 export
+  format (MP4 `av01`, AAC; like H.265 it has no software encoder and is offered only where the
+  GPU encodes it). Key + inter frames, one reference, the GPU's tool set (64×64 superblocks,
+  TX_MODE_SELECT; no warped motion, compound modes, filter intra, superres or restoration). The
+  driver needs a packed sequence header and a packed frame header per frame, writes its own
+  sequence header (which goes into `av1C` after it is checked against everything our frame
+  headers assume) and patches base_q_idx, loop filter and CDEF into our frame header at the bit
+  offsets we give. It codes widths that are not multiples of 64 rounded up and heights that are
+  not multiples of 16 two rows taller (1080 → 1082, which decoders show whatever render_size
+  says), so those sizes are declined with a message (1080p: export H.265, or a 16-multiple
+  height).
 - **Other systems:** `register()` does nothing and returns `Availability::Unavailable`.
 - **`HybridDecoder`** (`hybrid.rs`, safe code): the hardware decoder plus the means to build our
   software decoder for the same `SampleEntry` (`filmcraft_codecs::software_video_decoder`). On a
@@ -214,6 +225,8 @@ level and flags are the encoder's own. If it is missing the export stops with th
 | `tests/nvenc.rs` (Windows, NVIDIA) | H.264 from NVENC (1280×720, 6 Mbps, 72 frames) decodes with our decoder at worst 46.9 dB luma PSNR; IDR at 0, 24 and 48; dts / pts right |
 | `tests/nvenc_export.rs` (Windows, NVIDIA) | Export with hardware encoding against the software encoder through the export pipeline: the two decoded files at worst 54.8 dB luma PSNR; ffmpeg decodes the file without errors; declined cases go to the software encoder; the counters. H.265: offered when the GPU encodes it, 52.9 dB from the software H.264 export of the same frames, ffprobe `hevc,Main,hvc1`, BT.709, sizes 642×362 / 640×360 / 1000×562 cropped in the SPS and clean in ffmpeg |
 | `src/vaapi/abi_tests.rs` H.265 encode | 87 layout checks of the HEVC encode structures against libva 2.24 |
+| `src/vaapi/abi_tests.rs` AV1 encode | 102 layout checks of the AV1 encode and packed header structures against libva 2.24 |
+| `tests/vaapi_export.rs` AV1 | 1280×720 and 640×352 exports at worst 50.8 / 49.3 dB from the software H.264 export, ffprobe `av1,av01`, clean ffmpeg decode; 642-wide and 1080-high sizes refused with a message |
 | `tests/vaapi_export.rs` (Linux, VA-API) | Export with hardware encoding against the software encoder through the export pipeline (640×360, 72 frames): the two decoded files at worst 52.1 dB luma PSNR on a Radeon RX 7900; ffmpeg decodes the file without errors; declined cases go to the software encoder; the counters |
 | `src/vaapi/abi_tests.rs` (Linux) | FFI structs' sizes, alignments and field offsets against gcc's view of libva's headers (2.24): 113 H.264 decode, 91 HEVC decode and 128 H.264 encode checks |
 | `src/nvenc/abi_tests.rs` (Windows) | FFI structs' sizes, alignments, field offsets, constants and GUIDs against a C compiler's view of NVIDIA's `nvEncodeAPI.h` (12.1) |

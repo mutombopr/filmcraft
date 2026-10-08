@@ -209,3 +209,62 @@ fn hevc_export_on_the_gpu() {
         }
     }
 }
+
+/// AV1 has no software encoder either: offered where the GPU encodes it, and its export decodes in
+/// our decoder (close to the software H.264 export of the same frames) and in ffmpeg.
+#[test]
+fn av1_export_on_the_gpu() {
+    let _one = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    filmcraft_platform::register();
+    if !filmcraft_export::available(Format::Av1) {
+        eprintln!("SKIPPED: no VA-API AV1 encoder here");
+        return;
+    }
+    for (w, h, frames) in [(1280, 720, 72), (640, 352, 12)] {
+        let (p, seq, m) = project(w, h, frames);
+        let reference = tmp(&format!("ref_av1_{w}.mp4"));
+        export(&p, seq, &settings(reference.clone(), HardwareEncoding::Off), &m, &Progress::default()).unwrap();
+        let path = tmp(&format!("av1_{w}.mp4"));
+        let mut s = settings(path.clone(), HardwareEncoding::Off);
+        s.format = Format::Av1;
+        let before = hw_encode_stats();
+        let report = export(&p, seq, &s, &m, &Progress::default()).unwrap();
+        assert_eq!(report.frames, frames as u64);
+        assert_eq!(hw_encode_stats().frames - before.frames, frames as u64, "every picture went through the GPU encoder");
+        let (want, got) = (decode(&reference), decode(&path));
+        assert_eq!(got.len(), frames as usize, "frame count");
+        assert_eq!((got[0].width, got[0].height), (w, h));
+        let worst = want.iter().zip(&got).map(|(a, b)| luma_psnr(a, b)).fold(99.0, f64::min);
+        eprintln!("AV1 {w}x{h}: {} bytes, worst luma PSNR against the H.264 export {worst:.1} dB", std::fs::metadata(&path).unwrap().len());
+        assert!(worst > 30.0, "AV1 export differs: {worst:.1} dB");
+        if let Some(ff) = filmcraft_testkit::ffmpeg() {
+            let out = std::process::Command::new(&ff).args(["-v", "error", "-i", &path, "-f", "null", "-"]).output().unwrap();
+            assert!(out.stderr.is_empty(), "ffmpeg: {}", String::from_utf8_lossy(&out.stderr));
+            let probe = ff.with_file_name("ffprobe");
+            let out = std::process::Command::new(probe)
+                .args([
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=codec_name,codec_tag_string,width,height,pix_fmt",
+                    "-of",
+                    "csv=p=0",
+                    &path,
+                ])
+                .output()
+                .unwrap();
+            assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), format!("av1,av01,{w},{h},yuv420p"), "ffprobe");
+        }
+    }
+    // sizes the driver would code larger (642 wide; 1080 high becomes 1082) are refused, not
+    // written larger
+    for (w, h) in [(642, 352), (1920, 1080)] {
+        let (p, seq, m) = project(w, h, 3);
+        let mut s = settings(tmp("av1_pad.mp4"), HardwareEncoding::Off);
+        s.format = Format::Av1;
+        let err = export(&p, seq, &s, &m, &Progress::default()).unwrap_err().to_string();
+        assert!(err.contains("multiple of 16"), "{w}x{h}: {err}");
+    }
+}

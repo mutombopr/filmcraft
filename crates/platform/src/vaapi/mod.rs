@@ -3,6 +3,7 @@
 //! libva at run time, and [`device`], the safe wrappers.
 
 pub mod av1;
+pub mod av1enc;
 #[allow(unsafe_code)]
 pub mod device;
 #[allow(unsafe_code)]

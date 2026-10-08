@@ -94,6 +94,9 @@ pub fn register() -> Availability {
             // H.265 has no software encoder: the format exists where the GPU encodes it
             filmcraft_export::register_encoder(vaapi::hevcenc::factory);
             filmcraft_export::register_format_probe(filmcraft_export::Format::Hevc, vaapi::hevcenc::available);
+            // AV1 likewise
+            filmcraft_export::register_encoder(vaapi::av1enc::factory);
+            filmcraft_export::register_format_probe(filmcraft_export::Format::Av1, vaapi::av1enc::available);
         });
         filmcraft_codecs::hw::set_hw_backend("VA-API");
         Availability::Available("VA-API")

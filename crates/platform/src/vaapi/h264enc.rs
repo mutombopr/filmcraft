@@ -135,7 +135,7 @@ impl VaH264Encoder {
             H264Profile::High => VAProfileH264High,
         };
         let display = Display::open_for_encode(profile, rc)?;
-        let session = EncodeSession::new(display, profile, rc, cfg.width, cfg.height, 2)?;
+        let session = EncodeSession::new(display, profile, rc, 0, cfg.width, cfg.height, 2)?;
         let (sps, pps) = parameter_sets(&cfg, session.width, session.height);
         Ok(VaH264Encoder {
             session,

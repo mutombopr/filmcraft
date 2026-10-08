@@ -32,6 +32,9 @@ pub const VAProfileHEVCMain10: VAProfile = 18;
 pub const VAProfileVP9Profile0: VAProfile = 19;
 pub const VAProfileVP9Profile2: VAProfile = 21;
 pub const VAProfileAV1Profile0: VAProfile = 32;
+pub const VAConfigAttribEncAV1: VAConfigAttribType = 52;
+pub const VAConfigAttribEncAV1Ext1: VAConfigAttribType = 53;
+pub const VAConfigAttribEncAV1Ext2: VAConfigAttribType = 54;
 
 pub const VAEntrypointVLD: VAEntrypoint = 1;
 
@@ -994,4 +997,158 @@ pub struct VAEncSliceParameterBufferHEVC {
     pub pred_weight_table_bit_offset: u32,
     pub pred_weight_table_bit_length: u32,
     pub va_reserved: [u32; 6],
+}
+
+// ---- packed headers (va.h)
+
+pub const VA_ENC_PACKED_HEADER_SEQUENCE: u32 = 0x1;
+pub const VA_ENC_PACKED_HEADER_PICTURE: u32 = 0x2;
+pub const VAEncPackedHeaderParameterBufferType: VABufferType = 25;
+pub const VAEncPackedHeaderDataBufferType: VABufferType = 26;
+pub const VAEncPackedHeaderSequence: u32 = 1;
+pub const VAEncPackedHeaderPicture: u32 = 2;
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAEncPackedHeaderParameterBuffer {
+    /// `VAEncPackedHeaderType`.
+    pub type_: u32,
+    /// Length of the header data in bits.
+    pub bit_length: u32,
+    /// Whether the data already carries emulation prevention bytes (none in AV1).
+    pub has_emulation_bytes: u8,
+    pub va_reserved: [u32; 4],
+}
+
+// ---- AV1 encoding (va_enc_av1.h)
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAEncSequenceParameterBufferAV1 {
+    pub seq_profile: u8,
+    pub seq_level_idx: u8,
+    pub seq_tier: u8,
+    pub hierarchical_flag: u8,
+    pub intra_period: u32,
+    pub ip_period: u32,
+    pub bits_per_second: u32,
+    /// `seq_fields` bits, low bit first: still_picture, use_128x128_superblock,
+    /// enable_filter_intra, enable_intra_edge_filter, enable_interintra_compound,
+    /// enable_masked_compound, enable_warped_motion, enable_dual_filter, enable_order_hint,
+    /// enable_jnt_comp, enable_ref_frame_mvs, enable_superres, enable_cdef, enable_restoration,
+    /// bit_depth_minus8(3), subsampling_x, subsampling_y, mono_chrome.
+    pub seq_fields: u32,
+    pub order_hint_bits_minus_1: u8,
+    pub va_reserved: [u32; 16],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAEncSegParamAV1 {
+    /// `seg_flags` bits, low bit first: segmentation_enabled, segmentation_update_map,
+    /// segmentation_temporal_update.
+    pub seg_flags: u8,
+    pub segment_number: u8,
+    pub feature_data: [[i16; 8]; 8],
+    pub feature_mask: [u8; 8],
+    pub va_reserved: [u32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAEncWarpedMotionParamsAV1 {
+    pub wmtype: u32,
+    pub wmmat: [i32; 8],
+    pub invalid: u8,
+    pub va_reserved: [u32; 4],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAEncPictureParameterBufferAV1 {
+    pub frame_width_minus_1: u16,
+    pub frame_height_minus_1: u16,
+    pub reconstructed_frame: VASurfaceID,
+    pub coded_buf: VABufferID,
+    pub reference_frames: [VASurfaceID; 8],
+    pub ref_frame_idx: [u8; 7],
+    pub hierarchical_level_plus1: u8,
+    pub primary_ref_frame: u8,
+    pub order_hint: u8,
+    pub refresh_frame_flags: u8,
+    pub reserved8bits1: u8,
+    /// `VARefFrameCtrlAV1`: search_idx0..6 (3 bits each).
+    pub ref_frame_ctrl_l0: u32,
+    pub ref_frame_ctrl_l1: u32,
+    /// `picture_flags` bits, low bit first: frame_type(2), error_resilient_mode,
+    /// disable_cdf_update, use_superres, allow_high_precision_mv, use_ref_frame_mvs,
+    /// disable_frame_end_update_cdf, reduced_tx_set, enable_frame_obu, long_term_reference,
+    /// disable_frame_recon, allow_intrabc, palette_mode_enable, allow_screen_content_tools,
+    /// force_integer_mv.
+    pub picture_flags: u32,
+    pub seg_id_block_size: u8,
+    pub num_tile_groups_minus1: u8,
+    pub temporal_id: u8,
+    pub filter_level: [u8; 2],
+    pub filter_level_u: u8,
+    pub filter_level_v: u8,
+    /// `loop_filter_flags` bits, low bit first: sharpness_level(3), mode_ref_delta_enabled,
+    /// mode_ref_delta_update.
+    pub loop_filter_flags: u8,
+    pub superres_scale_denominator: u8,
+    pub interpolation_filter: u8,
+    pub ref_deltas: [i8; 8],
+    pub mode_deltas: [i8; 2],
+    pub base_qindex: u8,
+    pub y_dc_delta_q: i8,
+    pub u_dc_delta_q: i8,
+    pub u_ac_delta_q: i8,
+    pub v_dc_delta_q: i8,
+    pub v_ac_delta_q: i8,
+    pub min_base_qindex: u8,
+    pub max_base_qindex: u8,
+    /// `qmatrix_flags` bits, low bit first: using_qmatrix, qm_y(4), qm_u(4), qm_v(4).
+    pub qmatrix_flags: u16,
+    pub reserved16bits1: u16,
+    /// `mode_control_flags` bits, low bit first: delta_q_present, delta_q_res(2),
+    /// delta_lf_present, delta_lf_res(2), delta_lf_multi, tx_mode(2), reference_mode(2),
+    /// skip_mode_present.
+    pub mode_control_flags: u32,
+    pub segments: VAEncSegParamAV1,
+    pub tile_cols: u8,
+    pub tile_rows: u8,
+    pub reserved16bits2: u16,
+    pub width_in_sbs_minus_1: [u16; 63],
+    pub height_in_sbs_minus_1: [u16; 63],
+    pub context_update_tile_id: u16,
+    pub cdef_damping_minus_3: u8,
+    pub cdef_bits: u8,
+    pub cdef_y_strengths: [u8; 8],
+    pub cdef_uv_strengths: [u8; 8],
+    /// `loop_restoration_flags` bits, low bit first: yframe_restoration_type(2),
+    /// cbframe_restoration_type(2), crframe_restoration_type(2), lr_unit_shift(2), lr_uv_shift.
+    pub loop_restoration_flags: u16,
+    pub wm: [VAEncWarpedMotionParamsAV1; 7],
+    pub bit_offset_qindex: u32,
+    pub bit_offset_segmentation: u32,
+    pub bit_offset_loopfilter_params: u32,
+    pub bit_offset_cdef_params: u32,
+    pub size_in_bits_cdef_params: u32,
+    pub byte_offset_frame_hdr_obu_size: u32,
+    pub size_in_bits_frame_hdr_obu: u32,
+    /// `tile_group_obu_hdr_info` bits, low bit first: obu_extension_flag, obu_has_size_field,
+    /// temporal_id(3), spatial_id(2).
+    pub tile_group_obu_hdr_info: u8,
+    pub number_skip_frames: u8,
+    pub reserved16bits3: u16,
+    pub skip_frames_reduced_size: i32,
+    pub va_reserved: [u32; 16],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VAEncTileGroupBufferAV1 {
+    pub tg_start: u8,
+    pub tg_end: u8,
+    pub va_reserved: [u32; 4],
 }

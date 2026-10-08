@@ -136,7 +136,7 @@ impl VaHevcEncoder {
         }
         let (cw, ch) = coded(cfg.width, cfg.height);
         // input surfaces as wide as the coded picture, so its padding holds replicated edges
-        let session = EncodeSession::new(display, VAProfileHEVCMain, rc, cw, ch, 2)?;
+        let session = EncodeSession::new(display, VAProfileHEVCMain, rc, 0, cw, ch, 2)?;
         let (vps, sps, pps) = parameter_sets(&cfg, cw, ch);
         Ok(VaHevcEncoder { session, cfg, vps, sps, pps, gop_index: 0, prev: None, y: Vec::new(), u: Vec::new(), v: Vec::new() })
     }

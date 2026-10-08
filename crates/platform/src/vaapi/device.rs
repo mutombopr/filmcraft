@@ -190,6 +190,14 @@ unsafe impl VaParam for VAEncSequenceParameterBufferHEVC {}
 unsafe impl VaParam for VAEncPictureParameterBufferHEVC {}
 // SAFETY: as above.
 unsafe impl VaParam for VAEncSliceParameterBufferHEVC {}
+// SAFETY: as above.
+unsafe impl VaParam for VAEncPackedHeaderParameterBuffer {}
+// SAFETY: as above.
+unsafe impl VaParam for VAEncSequenceParameterBufferAV1 {}
+// SAFETY: as above.
+unsafe impl VaParam for VAEncPictureParameterBufferAV1 {}
+// SAFETY: as above.
+unsafe impl VaParam for VAEncTileGroupBufferAV1 {}
 
 // SAFETY: as above.
 unsafe impl VaParam for VAEncSequenceParameterBufferH264 {}
@@ -423,13 +431,18 @@ const MAX_SEGMENTS: usize = 256;
 impl EncodeSession {
     /// A session for `profile` at `width`×`height` (rounded up to whole macroblocks), rate-control
     /// mode `rc` (`VA_RC_*`), with `recon` reconstructed-picture surfaces.
-    pub fn new(disp: Display, profile: VAProfile, rc: u32, width: u32, height: u32, recon: usize) -> Result<EncodeSession, String> {
+    ///
+    /// `packed` is the `VA_ENC_PACKED_HEADER_*` set the application supplies (0: none).
+    pub fn new(disp: Display, profile: VAProfile, rc: u32, packed: u32, width: u32, height: u32, recon: usize) -> Result<EncodeSession, String> {
         let (w, h) = (width.div_ceil(16).saturating_mul(16), height.div_ceil(16).saturating_mul(16));
         if w == 0 || h == 0 || w > 16384 || h > 16384 || recon == 0 || recon > 16 {
             return Err(format!("unsupported encode session {width}x{height} with {recon} references"));
         }
         let mut attr =
-            [VAConfigAttrib { type_: VAConfigAttribRTFormat, value: VA_RT_FORMAT_YUV420 }, VAConfigAttrib { type_: VAConfigAttribRateControl, value: rc }];
+            vec![VAConfigAttrib { type_: VAConfigAttribRTFormat, value: VA_RT_FORMAT_YUV420 }, VAConfigAttrib { type_: VAConfigAttribRateControl, value: rc }];
+        if packed != 0 {
+            attr.push(VAConfigAttrib { type_: VAConfigAttribEncPackedHeaders, value: packed });
+        }
         let mut config = VA_INVALID_ID;
         // SAFETY: valid display; `attr` and `config` are live.
         let st = unsafe { (disp.api.create_config)(disp.dpy, profile, VAEntrypointEncSlice, attr.as_mut_ptr(), attr.len() as c_int, &mut config) };
@@ -578,6 +591,32 @@ impl EncodeSession {
         result?;
         self.disp.check(st, "vaUnmapBuffer (coded)")?;
         Ok(out)
+    }
+
+    /// A packed header: its parameter buffer and its data (`bits` long).
+    pub fn packed(&self, kind: u32, data: &[u8], bits: u32) -> Result<[EncBuffer<'_>; 2], String> {
+        let len = u32::try_from(data.len()).map_err(|_| "packed header too large")?;
+        if u64::from(bits) > u64::from(len) * 8 {
+            return Err("packed header shorter than its bit length".into());
+        }
+        let p = VAEncPackedHeaderParameterBuffer { type_: kind, bit_length: bits, has_emulation_bytes: 0, va_reserved: [0; 4] };
+        let param = self.params(VAEncPackedHeaderParameterBufferType, &p)?;
+        let mut id = VA_INVALID_ID;
+        // SAFETY: `data` is live for the call and `len` long; libva copies it and never writes
+        // through the pointer.
+        let st = unsafe {
+            (self.disp.api.create_buffer)(
+                self.disp.dpy,
+                self.context,
+                VAEncPackedHeaderDataBufferType,
+                len,
+                1,
+                data.as_ptr().cast_mut().cast::<c_void>(),
+                &mut id,
+            )
+        };
+        self.disp.check(st, "vaCreateBuffer (packed header)")?;
+        Ok([param, EncBuffer { s: self, id }])
     }
 
     /// A parameter buffer holding `item`.
