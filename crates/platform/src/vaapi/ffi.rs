@@ -378,7 +378,8 @@ pub struct VAPictureHEVC {
 }
 
 impl VAPictureHEVC {
-    pub const INVALID: VAPictureHEVC = VAPictureHEVC { picture_id: VA_INVALID_SURFACE, pic_order_cnt: 0, flags: VA_PICTURE_HEVC_INVALID, va_reserved: [0; VA_PADDING_LOW] };
+    pub const INVALID: VAPictureHEVC =
+        VAPictureHEVC { picture_id: VA_INVALID_SURFACE, pic_order_cnt: 0, flags: VA_PICTURE_HEVC_INVALID, va_reserved: [0; VA_PADDING_LOW] };
 }
 
 #[repr(C)]
