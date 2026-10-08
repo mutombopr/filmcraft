@@ -86,6 +86,10 @@ pub fn register() -> Availability {
             return Availability::Unavailable("no VA-API hardware decoder (libva or a driver is missing)");
         }
         filmcraft_codecs::register_video_decoder(vaapi_factory);
+        // Export ▸ Hardware encoding (H.264): in front of the software encoder, taking an export
+        // only when asked for and when the GPU can do it
+        static ENCODERS: std::sync::Once = std::sync::Once::new();
+        ENCODERS.call_once(|| filmcraft_export::register_encoder(vaapi::h264enc::factory));
         filmcraft_codecs::hw::set_hw_backend("VA-API");
         Availability::Available("VA-API")
     }

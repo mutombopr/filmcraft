@@ -7,6 +7,7 @@ pub mod device;
 #[allow(unsafe_code)]
 pub mod ffi;
 pub mod h264;
+pub mod h264enc;
 pub mod hevc;
 
 #[cfg(test)]
