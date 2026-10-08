@@ -2101,6 +2101,7 @@ dependencies = [
  "filmcraft-color",
  "filmcraft-export",
  "filmcraft-frame",
+ "filmcraft-h264",
  "filmcraft-isobmff",
  "filmcraft-media",
  "filmcraft-project",

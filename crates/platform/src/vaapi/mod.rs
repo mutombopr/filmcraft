@@ -6,6 +6,7 @@
 pub mod device;
 #[allow(unsafe_code)]
 pub mod ffi;
+pub mod h264;
 
 #[cfg(test)]
 mod abi_tests;
