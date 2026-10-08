@@ -25,7 +25,7 @@ Containment rules:
 
 1. The crate does not use `lints.workspace = true`. Its own `[lints]` table copies the workspace
    lints except `unsafe_code = "deny"` (not `forbid`), and adds
-   `clippy::undocumented_unsafe_blocks = "deny"`. Only the FFI modules (`videotoolbox`, `media_foundation::gpu` / `media_foundation::mft`, and
+   `clippy::undocumented_unsafe_blocks = "deny"`. Only the FFI modules (`videotoolbox`, `media_foundation::gpu` / `media_foundation::mft`, `vaapi::ffi` / `vaapi::device` on Linux, and
    `nvenc::ffi` / `nvenc::session` on Windows) carry `#[allow(unsafe_code)]`; the rest of the crate
    (the fallback logic in `hybrid`, the decoder logic in `media_foundation`, `annexb`, `biplanar`,
    the encoder logic in `nvenc`) has no `unsafe`.

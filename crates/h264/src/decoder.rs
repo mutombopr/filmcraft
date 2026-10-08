@@ -540,10 +540,10 @@ impl Decoder {
         let PendingPic { frame, sps, first, poc, pts, key, slices } = p;
         let draft = self.draft && first.nal_ref_idc == 0;
         if self.accel.is_some() {
-            if let Err(e) = self.accelerate(&frame, &first, &sps, poc, &slices) {
-                if let Ok(mut err) = self.shared.error.lock() {
-                    err.get_or_insert(Error::Invalid(format!("hardware decoding: {e}")));
-                }
+            if let Err(e) = self.accelerate(&frame, &first, &sps, poc, &slices)
+                && let Ok(mut err) = self.shared.error.lock()
+            {
+                err.get_or_insert(Error::Invalid(format!("hardware decoding: {e}")));
             }
         } else {
             self.dispatch(frame.clone(), slices, draft);

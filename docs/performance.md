@@ -321,6 +321,20 @@ of 8 s of a 1080p23.976 H.264 clip (191 frames) to H.264 with the default preset
 
 Quality at equal bitrate: see the PR description.
 
+## Results (HW5: Linux VA-API hardware H.264 decoding, Off → Auto)
+
+Same build, `cargo xtask bench --sections decode --only dec_h264 --repeat 3 --hw off|auto`,
+2026-10-08, AMD Ryzen 7 9700X (16 threads) + Radeon RX 7900 (Navi 31), Mesa 26.2.2, libva 2.24,
+load average 7–11. Pictures are bit-exact either way (`crates/platform/tests/vaapi.rs`).
+
+| codec | size | CPU ms/frame Off → **Auto** | fps Off → **Auto** (best of 3) | hw frames / fallbacks |
+|---|---|---|---|---|
+| H.264 | 1080p | 33.6 → **0.9** | 393 → **348** | 360 / 0 |
+| H.264 | 2160p | 136.7 → **3.2** | 97 → **107** | 216 / 0 |
+
+Throughput is about the same (the software decoder already used all 16 threads); the CPU time
+left per frame is the slice-header parse and the copy of the picture out of the GPU.
+
 ## Results (HW2 follow-up: Windows VP9 and AV1 hardware decoding, Off → Auto)
 
 Same machine and method as the H.264 / HEVC results above (Xeon E5-2680 v4, RTX 5060 driver 617.14,
